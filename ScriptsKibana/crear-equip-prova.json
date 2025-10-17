@@ -1,0 +1,106 @@
+POST /teams/_doc/equip_sol_vgc_1
+{
+  "team_name": "Equip de Sol VGC - Prova",
+  "description": "Equip VGC basat en Sol (Torkoal + Lilligant)",
+  "user_id": "jordi_bolance_test",
+  "format": "VGC Reg G",
+  "team_members": [
+    {
+      "base_pokemon": "Torkoal",
+      "nickname": "Volcano",
+      "item": "Charcoal",
+      "ability": "Drought",
+      "tera_type": "Fire",
+      "nature": "Quiet",
+      "moves": ["Eruption", "Heat Wave", "Protect", "Earth Power"],
+      "evs": {
+        "hp": 252,
+        "attack": 0,
+        "defense": 0,
+        "sp_atk": 252,
+        "sp_def": 4,
+        "speed": 0
+      }
+    },
+    {
+      "base_pokemon": "Lilligant-Hisui",
+      "item": "Focus Sash",
+      "ability": "Chlorophyll",
+      "tera_type": "Fighting",
+      "nature": "Jolly",
+      "moves": ["Solar Blade", "Close Combat", "After You", "Protect"],
+      "evs": {
+        "hp": 4,
+        "attack": 252,
+        "defense": 0,
+        "sp_atk": 0,
+        "sp_def": 0,
+        "speed": 252
+      }
+    },
+    {
+      "base_pokemon": "Flutter Mane",
+      "item": "Booster Energy",
+      "ability": "Protosynthesis",
+      "tera_type": "Fairy",
+      "nature": "Timid",
+      "moves": ["Moonblast", "Shadow Ball", "Dazzling Gleam", "Protect"],
+      "evs": {
+        "hp": 4,
+        "attack": 0,
+        "defense": 0,
+        "sp_atk": 252,
+        "sp_def": 0,
+        "speed": 252
+      }
+    },
+    {
+      "base_pokemon": "Incineroar",
+      "item": "Sitrus Berry",
+      "ability": "Intimidate",
+      "tera_type": "Grass",
+      "nature": "Careful",
+      "moves": ["Flare Blitz", "Knock Off", "Fake Out", "Parting Shot"],
+      "evs": {
+        "hp": 252,
+        "attack": 0,
+        "defense": 100,
+        "sp_atk": 0,
+        "sp_def": 156,
+        "speed": 0
+      }
+    },
+    {
+      "base_pokemon": "Raging Bolt",
+      "item": "Assault Vest",
+      "ability": "Protosynthesis",
+      "tera_type": "Electric",
+      "nature": "Modest",
+      "moves": ["Thunderclap", "Draco Meteor", "Volt Switch", "Weather Ball"],
+      "evs": {
+        "hp": 252,
+        "attack": 0,
+        "defense": 0,
+        "sp_atk": 252,
+        "sp_def": 4,
+        "speed": 0
+      }
+    },
+    {
+      "base_pokemon": "Urshifu-Rapid-Strike",
+      "item": "Mystic Water",
+      "ability": "Unseen Fist",
+      "tera_type": "Water",
+      "nature": "Jolly",
+      "moves": ["Surging Strikes", "Close Combat", "Aqua Jet", "Protect"],
+      "evs": {
+        "hp": 4,
+        "attack": 252,
+        "defense": 0,
+        "sp_atk": 0,
+        "sp_def": 0,
+        "speed": 252
+      }
+    }
+  ]
+}
