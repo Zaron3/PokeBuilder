@@ -1,0 +1,10 @@
+# Dades de Docker (creades localment)
+es-data/
+
+# Arxius del sistema operatiu
+.DS_Store
+Thumbs.db
+
+# Arxius d'IntelliJ (configuració local)
+.idea/
+*.iml
