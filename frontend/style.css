@@ -1,0 +1,214 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    text-align: center;
+}
+
+/* 1. Contenidor dels cercles */
+.team-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 50px;
+    flex-wrap: wrap;
+}
+
+/* Modifica aquest que ja tenies */
+.team-slot {
+    width: 100px;
+    height: 100px;
+    border: 3px dashed #ccc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative; /* <-- AFEGEIX AIXÒ */
+}
+
+.team-slot:hover {
+    border-color: #777;
+    color: #777;
+    background-color: #fafafa;
+}
+
+/* 3. El Modal (Pop-up) - Fons fosc */
+.modal {
+    display: none; /* Amagat per defecte */
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent */
+}
+
+/* 4. El contingut del Modal (Caixa blanca) */
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    text-align: left;
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 30px;
+    color: #aaa;
+    cursor: pointer;
+}
+.close-btn:hover {
+    color: #333;
+}
+
+/* 5. El cercador i la llista */
+#search-bar {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    margin-bottom: 20px;
+    box-sizing: border-box; /* Assegura que el padding no trenqui el disseny */
+}
+
+#pokemon-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px; /* Per si hi ha molts Pokémon */
+    overflow-y: auto;
+}
+
+#pokemon-list li {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+#pokemon-list li:hover {
+    background-color: #f0f0f0;
+}
+
+/* Estil per a un slot "ple" */
+.team-slot.slot-filled {
+    border-style: solid; /* Canvia la línia de guions a sòlida */
+    border-color: #aaa;
+    color: #333; /* Color del text més fosc */
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Canviem la mida de la lletra del nom */
+.team-slot.slot-filled span {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+}
+
+.remove-btn {
+    position: absolute; /* Es posiciona a sobre del pare (.team-slot) */
+    top: -5px;          /* Una mica per sobre */
+    right: -5px;         /* Una mica cap a la dreta */
+
+    width: 24px;
+    height: 24px;
+    background-color: #e74c3c; /* Vermell */
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.remove-btn:hover {
+    background-color: #c0392b; /* Vermell més fosc */
+    transform: scale(1.1);
+}
+
+/* 1. Estil per a la llista del pop-up (modal) */
+#pokemon-list li {
+    display: flex; /* Per posar la imatge i el text en línia */
+    align-items: center;
+    gap: 15px; /* Espai entre imatge i text */
+}
+
+#pokemon-list li img {
+    width: 40px;  /* Mida de l'sprite a la llista */
+    height: 40px;
+}
+
+/* 2. Estil per al cercle ple (slot-filled) */
+.team-slot.slot-filled {
+    flex-direction: column; /* Apilem la imatge i el text */
+    justify-content: center;
+    padding-top: 10px; /* Una mica d'espai per al botó 'X' */
+    font-size: 14px; /* Lletra del nom més petita */
+}
+
+/* 3. Estil per a l'sprite dins del cercle */
+.slot-sprite {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 5px; /* Espai entre sprite i nom */
+}
+
+/* --- Estil del Botó de Recomanació --- */
+#recommend-btn {
+    font-size: 18px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    margin-top: 40px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+/* Estat Actiu (Blau) */
+#recommend-btn:enabled {
+    background-color: #007bff; /* Blau */
+    color: white;
+}
+#recommend-btn:enabled:hover {
+    background-color: #0056b3;
+}
+
+/* Estat Desactivat (Gris) */
+#recommend-btn:disabled {
+    background-color: #ccc;
+    color: #888;
+    cursor: not-allowed;
+}
+
+/* --- Estil del Modal de Recomanació --- */
+#recommend-content {
+    text-align: center;
+    padding: 20px 0;
+}
+#recommend-sprite {
+    width: 120px;
+    height: 120px;
+    image-rendering: pixelated; /* Perquè es vegi pixelat, no borrós */
+}
+#recommend-text {
+    font-size: 1.2em;
+    margin-top: 10px;
+}

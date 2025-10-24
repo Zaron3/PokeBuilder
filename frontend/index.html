@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PokeBuilder Prototip</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Construeix el teu Equip</h1>
+
+<div class="team-container">
+    <div class="team-slot" data-slot-id="1"><span>+</span></div>
+    <div class="team-slot" data-slot-id="2"><span>+</span></div>
+    <div class="team-slot" data-slot-id="3"><span>+</span></div>
+    <div class="team-slot" data-slot-id="4."><span>+</span></div>
+    <div class="team-slot" data-slot-id="5"><span>+</span></div>
+    <div class="team-slot" data-slot-id="6"><span>+</span></div>
+</div>
+
+<button id="recommend-btn" disabled>Recomana'm un Pokémon</button>
+
+<div id="pokemon-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>Selecciona un Pokémon</h2>
+
+        <input type="text" id="search-bar" placeholder="Cerca Pokémon (ex: Pikachu)...">
+
+        <ul id="pokemon-list">
+        </ul>
+    </div>
+</div>
+
+<div id="recommend-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h2>Pokémon Recomanat 💡</h2>
+
+        <div id="recommend-content">
+            <img id="recommend-sprite" src="" alt="Pokémon Recomanat">
+            <p id="recommend-text"></p>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
