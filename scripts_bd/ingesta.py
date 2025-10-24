@@ -17,7 +17,7 @@ def importar_pokemons():
     """
     
     # IDs dels Pokémon que volem importar (de l'1 al 9)
-    ids_a_importar = range(1, 10) # range(1, 10) va de 1 a 9
+    ids_a_importar = range(1, 152) # range(1, 10) va de 1 a 9
     
     print(f"--- INICI DE LA INGESTA DE {len(ids_a_importar)} POKÉMONS ---")
     
