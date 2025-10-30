@@ -1,50 +1,113 @@
 <!DOCTYPE html>
 <html lang="ca">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PokeBuilder Prototip</title>
-    <link rel="stylesheet" href="style.css">
+  <!-- ============================================================
+       🧭 META I CONFIGURACIÓ BÀSICA
+       ============================================================ -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PokeBuilder — Equip</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+
+  <!-- Full CSS -->
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
 
-<h1>Construeix el teu Equip</h1>
+<!-- ============================================================
+     🌙 MODE FOSC FIX (sense selector)
+     ============================================================ -->
+<body class="dark">
 
-<div class="team-container">
-    <div class="team-slot" data-slot-id="1"><span>+</span></div>
-    <div class="team-slot" data-slot-id="2"><span>+</span></div>
-    <div class="team-slot" data-slot-id="3"><span>+</span></div>
-    <div class="team-slot" data-slot-id="4."><span>+</span></div>
-    <div class="team-slot" data-slot-id="5"><span>+</span></div>
-    <div class="team-slot" data-slot-id="6"><span>+</span></div>
-</div>
-
-<button id="recommend-btn" disabled>Recomana'm un Pokémon</button>
-
-<div id="pokemon-modal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>Selecciona un Pokémon</h2>
-
-        <input type="text" id="search-bar" placeholder="Cerca Pokémon (ex: Pikachu)...">
-
-        <ul id="pokemon-list">
-        </ul>
+  <!-- ============================================================
+       🔝 CAPÇALERA / NAVBAR
+       ============================================================ -->
+    <header class="header">
+    <div class="brand">
+      <img src="pokeball-icon.svg" alt="Pokéball" class="brand-icon" />
+      <span class="brand-name">PokeBuilder</span>
     </div>
-</div>
 
-<div id="recommend-modal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>Pokémon Recomanat 💡</h2>
+    <nav class="actions">
+      <button id="recommend-btn" class="glass-btn blue" disabled>Recomana’m</button>
+      <button id="random-btn" class="glass-btn gray">Equip aleatori</button>
+      <button id="clear-btn" class="glass-btn red">Buida equip</button>
+      <button id="add-btn" class="glass-btn outline">Afegeix Pokémon</button>
+    </nav>
+  </header>
 
-        <div id="recommend-content">
-            <img id="recommend-sprite" src="" alt="Pokémon Recomanat">
-            <p id="recommend-text"></p>
+
+  <!-- ============================================================
+       🧩 CONTINGUT PRINCIPAL
+       ============================================================ -->
+  <main class="container">
+
+    <!-- 🧱 EQUIP SUPERIOR -->
+    <section class="team-top">
+      <h2 class="section-title">El teu equip</h2>
+
+      <div id="team-grid" class="team-grid">
+        <!-- JS renderitza 6 targetes o slots -->
+      </div>
+    </section>
+
+    <!-- 🌀 CARRUSEL 3D INFERIOR -->
+    <section class="carousel-area">
+      <h3 class="section-title subtle">Vista 3D</h3>
+
+      <div class="wrapper">
+        <div id="carousel-inner" class="inner" style="--quantity: 0;">
+          <!-- JS injecta targetes 3D aquí -->
         </div>
-    </div>
-</div>
+      </div>
+    </section>
 
-<script src="app.js"></script>
+  </main>
+
+  <!-- ============================================================
+       🔍 MODAL DE CERCA DE POKÉMON
+       ============================================================ -->
+  <div id="pokemon-modal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="search-title">
+      <button class="close-btn" aria-label="Tanca">×</button>
+
+      <h2 id="search-title">Selecciona un Pokémon</h2>
+
+      <input
+        type="text"
+        id="search-bar"
+        placeholder="Cerca (ex: Pikachu)..."
+        aria-label="Cercar Pokémon"
+      />
+
+      <ul id="pokemon-list" aria-live="polite"></ul>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       💡 MODAL DE RECOMANACIÓ
+       ============================================================ -->
+  <div id="recommend-modal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="rec-title">
+      <button class="close-btn" aria-label="Tanca">×</button>
+
+      <h2 id="rec-title">Suggeriment 💡</h2>
+
+      <div id="recommend-content">
+        <img id="recommend-sprite" src="" alt="Pokémon Recomanat" />
+        <p id="recommend-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       ⚙️ SCRIPT PRINCIPAL
+       ============================================================ -->
+  <script src="app.js"></script>
+
 </body>
 </html>

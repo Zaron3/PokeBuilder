@@ -1,9 +1,19 @@
 from fastapi import FastAPI, HTTPException, Depends
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError as ESConnectionError, NotFoundError
+from fastapi.middleware.cors import CORSMiddleware
 
 # Creem una instància de l'aplicació
 app = FastAPI()
+
+# Permet connexions des del frontend (ex: Live Server)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Pots posar el port específic del Live Server, ex: ["http://127.0.0.1:5500"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Dependència d'Elasticsearch ---
 # Aquesta funció s'executarà CADA COP que un endpoint la demani.
