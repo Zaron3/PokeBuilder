@@ -16,8 +16,8 @@ def importar_pokemons():
     Script principal que llegeix de PokéAPI i insereix a Elasticsearch.
     """
     
-    # IDs dels Pokémon que volem importar (de l'1 al 9)
-    ids_a_importar = range(1, 152) # range(1, 10) va de 1 a 9
+    # IDs dels Pokémon que volem importar (de l'1 al 1026)
+    ids_a_importar = range(1, 1026) # range(1, 10) va de 1 a 9
     
     print(f"--- INICI DE LA INGESTA DE {len(ids_a_importar)} POKÉMONS ---")
     

@@ -128,6 +128,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   const buildTopCard = (poke, idx) => {
+    const STAT_NAMES = {
+      hp: "HP",
+      attack: "Attack",
+      defense: "Defense",
+      special_attack: "Sp. Atk",
+      special_defense: "Sp. Def",
+      speed: "Speed"
+    };
+
+
     const type = poke.types ? poke.types[0] : "normal";
     const rgb = typeToRGB(type.toLowerCase());
     const card = document.createElement("div");
@@ -135,10 +145,50 @@ document.addEventListener("DOMContentLoaded", async () => {
     card.style.setProperty("--type-rgb", rgb);
 
     const inner = document.createElement("div");
-    inner.className = "card-inner";
+    inner.className = "card-inner"; // Mantenim inner per si volem altres efectes
 
     const front = document.createElement("div");
     front.className = "card-face card-front";
+
+    // --- NOU: CONTENIDOR DELS BOTONS D'ACCIÓ ---
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+
+    // Botó d'ELIMINAR
+    // Botó d'ELIMINAR
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "action-btn remove";
+    removeBtn.title = `Eliminar ${poke.name}`;
+    // Afegim una icona SVG de "creu"
+    removeBtn.innerHTML = `
+      <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+      </svg>
+    `;
+    removeBtn.addEventListener("click", e => {
+      e.stopPropagation(); // Evita que el clic es propagui a la targeta
+      removeFromTeam(idx);
+    });
+
+    // Botó d'EDITAR
+    const editBtn = document.createElement("button");
+    editBtn.className = "action-btn edit";
+    editBtn.title = `Editar ${poke.name}`;
+    // Afegim la teva imatge PNG
+    editBtn.innerHTML = `
+      <img src="src/edit-icon.png" alt="Editar" class="action-icon-img">
+    `;
+    editBtn.addEventListener("click", e => {
+      e.stopPropagation(); // Evita que el clic es propagui
+      // Aquí hauríem d'obrir un modal d'edició detallada
+      // De moment, farem que obri el modal de cerca com un "canvi ràpid"
+      openSearch(idx);
+    });
+
+    actions.append(removeBtn, editBtn); // Afegim els botons al contenidor d'accions
+    front.appendChild(actions); // Afegim el contenidor d'accions a la cara frontal
+    // --- FI NOU ---
+
 
     const head = document.createElement("div");
     head.className = "card-head";
@@ -163,22 +213,77 @@ document.addEventListener("DOMContentLoaded", async () => {
     id.className = "card-id";
     id.textContent = padId(poke.pokedex_id);
 
-    const pill = document.createElement("div");
-    pill.className = "type-pill";
-    pill.textContent = poke.types.join(", ").toUpperCase();
-
     title.append(name, id);
-    body.append(title, pill);
+
+    // --- NOU BLOC PER A PÍNDOLES MÚLTIPLES ---
+    // 1. Creem un contenidor per a les píndoles
+    const typePillContainer = document.createElement("div");
+    typePillContainer.className = "type-pill-container";
+
+    // 2. Fem un bucle per cada tipus que tingui el Pokémon
+    poke.types.forEach(type => {
+      const pill = document.createElement("div");
+      pill.className = "type-pill";
+      pill.textContent = type.toUpperCase();
+
+      // 3. Calculem i establim el color PER A CADA PÍNDOLA
+      //    Això sobreescriu el color de la targeta (que només tenia el primer tipus)
+      const rgb = typeToRGB(type.toLowerCase());
+      pill.style.setProperty("--type-rgb", rgb);
+
+      typePillContainer.appendChild(pill); // Afegim la píndola al contenidor
+    });
+    // --- FI DEL NOU BLOC ---
+
+    body.append(title, typePillContainer); // Afegim el contenidor (amb les píndoles a dins) al body
     front.append(head, body);
 
+    // Eliminem la 'card-back' i el seu contingut, ja no la necessitem
+    // const back = document.createElement("div");
+    // back.className = "card-face card-back";
+    // back.innerHTML = `<div class="back-body">Clica per eliminar</div>`;
+
+    // --- NOU: CARA POSTERIOR (Estadístiques) ---
     const back = document.createElement("div");
     back.className = "card-face card-back";
-    back.innerHTML = `<div class="back-body">Clica per eliminar</div>`;
 
-    inner.append(front, back);
+    // Títol
+    const statsTitle = document.createElement("h4");
+    statsTitle.className = "stats-title";
+    statsTitle.textContent = "Base Stats";
+    back.appendChild(statsTitle);
+
+    // Llista d'Stats
+    const statsList = document.createElement("ul");
+    statsList.className = "stats-list";
+
+    // Assegura't que el teu 'poke.stats' del backend tingui aquest format
+    if (poke.stats) {
+      const statsInOrder = [
+        ['hp', poke.stats.hp],
+        ['attack', poke.stats.attack],
+        ['defense', poke.stats.defense],
+        ['special_attack', poke.stats.special_attack],
+        ['special_defense', poke.stats.special_defense],
+        ['speed', poke.stats.speed]
+      ];
+
+      for (const [statName, statValue] of statsInOrder) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span class="stat-name">${STAT_NAMES[statName] || statName}</span>
+          <span class="stat-value">${statValue}</span>
+        `;
+        statsList.appendChild(li);
+      }
+    }
+    back.appendChild(statsList);
+
+    inner.append(front, back); // Només afegim la cara frontal
     card.appendChild(inner);
 
-    card.addEventListener("click", () => removeFromTeam(idx));
+    // Eliminem l'event listener de clic a la targeta, ja que els botons ja ho gestionen
+    // card.addEventListener("click", () => removeFromTeam(idx));
     return card;
   };
 

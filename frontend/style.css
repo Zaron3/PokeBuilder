@@ -227,6 +227,7 @@ html, body {
   perspective: 1000px;
   height: 220px;
   position: relative;
+  transition: transform 0.2s ease-out; /* <-- AFEGEIX AQUESTA LÍNIA */
 }
 
 .card-inner {
@@ -237,9 +238,7 @@ html, body {
   transition: transform .35s ease;
 }
 
-.poke-card:hover .card-inner {
-  transform: rotateY(180deg);
-}
+
 
 .card-face {
   position: absolute;
@@ -252,8 +251,10 @@ html, body {
   box-shadow: var(--shadow);
 }
 
-.card-back {
-  transform: rotateY(180deg);
+/* Efecte d'escala al passar el ratolí */
+.poke-card:hover {
+  transform: scale(1.03); /* La fa un 3% més gran */
+  z-index: 5; /* Assegura que es posi per sobre de les altres */
 }
 
 /* ============================================================
@@ -562,3 +563,131 @@ html, body {
 .hidden {
   display: none !important;
 }
+
+/* ============================================================
+   ✏️ BOTONS D'ACCIÓ SOBRE LA TARGETA (EDITAR/ELIMINAR)
+   ============================================================ */
+.card-actions {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  justify-content: space-between;
+  z-index: 1; /* Assegura que estiguin per sobre d'altres elements */
+  display: flex;
+  gap: 0;
+  opacity: 1; /* Inicialment ocults */
+  pointer-events: all; /* No respondran a events quan són ocults */
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  transform: translateY(0); /* Petita animació en aparèixer */
+}
+
+.action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%; /* Circular */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  color: var(--ink); /* Text blanc */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); /* Petita ombra */
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Estils específics per al botó d'eliminar (Creu - Vermell) */
+.action-btn.remove {
+  background-color: #ef4444; /* Vermell fort */
+  order: -1; /* Força que el botó de remove es posicioni a l'esquerra */
+}
+
+.action-btn.remove:hover {
+  background-color: #dc2626; /* Vermell més fosc al hover */
+}
+
+/* Estils específics per al botó d'editar (Llapis - Blau) */
+.action-btn.edit {
+  background-color: #3b82f6; /* Blau fort */
+}
+
+.action-btn.edit:hover {
+  background-color: #2563eb; /* Blau més fosc al hover */
+}
+
+/* Icones (ara són SVGs o IMGs) */
+.action-btn .icon {
+  /* Mida per l'SVG de la creu (si encara el fas servir) */
+  width: 18px;
+  height: 18px;
+}
+
+.action-btn .action-icon-img {
+  /* Mida per al teu PNG */
+  width: 16px; /* Ajusta-ho a la mida que vulguis */
+  height: 16px; /* Ajusta-ho a la mida que vulguis */
+  /* Si el teu llapis no és blanc, potser necessites: */
+  /* filter: invert(1); <-- (Per fer-lo blanc) */
+}
+
+.type-pill-container {
+  display: flex; /* Posa les píndoles en fila */
+  flex-wrap: wrap; /* Per si un Pokémon tingués més tipus */
+  gap: 6px; /* Espai entre les píndoles */
+}
+
+.poke-card:hover .card-inner {
+  transform: rotateY(180deg); /* <--- TORNA A GIRAR */
+}
+
+/* NOU: Estils pel revers de la targeta */
+.card-back {
+  transform: rotateY(180deg); /* Fa que estigui del revés inicialment */
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--ring);
+  padding-bottom: 6px;
+}
+
+.stats-list {
+  list-style: none;
+  width: 100%;
+  padding: 0 4px; /* Una mica d'espai als costats */
+}
+
+.stats-list li {
+  display: flex;
+  justify-content: space-between; /* Nom a l'esquerra, valor a la dreta */
+  align-items: center;
+  font-size: 13px;
+  padding: 3px 0; /* Espaiat entre línies */
+}
+
+.stat-name {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-weight: 800;
+  color: var(--ink);
+  min-width: 25px; /* Alineació correcta dels números */
+  text-align: right;
+}
+
+
