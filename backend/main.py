@@ -49,7 +49,7 @@ def get_es_client():
 def ruta_arrel():
     return {"missatge": "API del PokeBuilder funcionant! (Connectada a Elastic)"}
 
-# Endpoint 3.1: Cerca de Pokémon per autocompletar
+# Endpoint 3.1: Cerca de Pokémon per autocompletar (MODIFICAT)
 @app.get("/api/v1/pokemon/search")
 def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_client)):
     """
@@ -58,7 +58,6 @@ def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_cli
     """
 
     # La consulta busca documents que comencin amb el terme de cerca (prefix)
-    # Busquem al camp 'name.keyword' per a cerques exactes de prefix.
     query = {
         "query": {
             "prefix": {
@@ -71,7 +70,7 @@ def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_cli
 
     response = es_client.search(index="pokemon", body=query)
 
-    # Formategem la resposta tal com demana el contracte
+    # Formategem la resposta
     results = []
     for hit in response['hits']['hits']:
         pokemon = hit['_source']
@@ -79,10 +78,12 @@ def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_cli
             "pokedex_id": pokemon.get("pokedex_id"),
             "name": pokemon.get("name", "N/A").capitalize(),
             "types": pokemon.get("types"),
-            "sprite_url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pokemon.get('pokedex_id')}.png"
+            "sprite_url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pokemon.get('pokedex_id')}.png",
+            "stats": pokemon.get("stats")  # <-- AFEGIT TAL COM HAS DEMANAT
         })
 
     return results
+
 
 # Endpoint 3.2: Obtenir detalls d'un Pokémon
 @app.get("/api/v1/pokemon/{pokedex_id}")
