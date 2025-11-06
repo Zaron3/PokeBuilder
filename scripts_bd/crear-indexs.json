@@ -7,6 +7,7 @@
 DELETE /pokemon?ignore_unavailable=true
 DELETE /moves?ignore_unavailable=true
 DELETE /teams?ignore_unavailable=true
+DELETE /types?ignore_unavailable=true
 
 // 2. CREEM L'ÍNDEX `pokemon`
 PUT /pokemon
@@ -107,6 +108,28 @@ PUT /teams
 }
 }
 }
+}
+}
+}
+
+// 5. CREEM L'ÍNDEX `types` (Tipus de Pokémon i les seves relacions d'efectivitat)
+PUT /types
+{
+"mappings": {
+"properties": {
+"type_id": { "type": "integer" },
+"name": {
+"type": "text",
+"fields": {
+"keyword": { "type": "keyword" }
+}
+},
+"double_damage_from": { "type": "keyword" },
+"half_damage_from": { "type": "keyword" },
+"no_damage_from": { "type": "keyword" },
+"double_damage_to": { "type": "keyword" },
+"half_damage_to": { "type": "keyword" },
+"no_damage_to": { "type": "keyword" }
 }
 }
 }
