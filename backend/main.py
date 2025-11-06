@@ -1,63 +1,50 @@
 from fastapi import FastAPI, HTTPException, Depends
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import ConnectionError as ESConnectionError, NotFoundError
-from fastapi.middleware.cors import CORSMiddleware
+# Assegura't d'haver instal·lat la versió correcta! ("pip install 'elasticsearch<9.0.0'")
+from elasticsearch.exceptions import ConnectionError as ESConnectionError
 
 # Creem una instància de l'aplicació
 app = FastAPI()
 
-# Permet connexions des del frontend (ex: Live Server)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Pots posar el port específic del Live Server, ex: ["http://127.0.0.1:5500"]
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# --- Diccionari de Mapeig per a les Estadístiques ---
+# Tradueix els noms amigables (URL) als noms dels camps a Elasticsearch
+STAT_MAPPING = {
+    "velocitat": "speed",
+    "hp": "hp",
+    "atac": "attack",
+    "defensa": "defense",
+    "atac_especial": "special_attack",
+    "defensa_especial": "special_defense"
+}
+
 
 # --- Dependència d'Elasticsearch ---
-# Aquesta funció s'executarà CADA COP que un endpoint la demani.
-# És la manera correcta de gestionar connexions a bases de dades a FastAPI.
 def get_es_client():
     try:
-        # Creem el client
         es = Elasticsearch(
-            hosts=["http://localhost:9200"],
-            # Pots afegir autenticació aquí si la tinguessis
-            # http_auth=('usuari', 'contrasenya')
+            hosts=["http://127.0.0.1:9200"],
+            verify_certs=False
         )
-        # Comprovem que la connexió funciona
         if not es.ping():
             raise ESConnectionError("Ping a Elasticsearch ha fallat.")
-
-        # 'yield' és com un 'return' per a les dependències.
-        # Entrega el client 'es' a l'endpoint.
         yield es
-
     except ESConnectionError:
-        # Si hi ha qualsevol error de connexió, enviem un error 503
-        # (Servei No Disponible) al frontend.
         raise HTTPException(status_code=503, detail="El servei d'Elasticsearch no està disponible.")
     finally:
-        # Aquesta part es podria fer servir per tancar connexions,
-        # però el client d'Elasticsearch gestiona això automàticament.
         pass
 
 # --- Endpoints de l'API ---
 
 @app.get("/")
 def ruta_arrel():
-    return {"missatge": "API del PokeBuilder funcionant! (Connectada a Elastic)"}
+    return {"missatge": "El servidor FastAPI del PokeBuilder funciona!"}
 
-# Endpoint 3.1: Cerca de Pokémon per autocompletar (MODIFICAT)
+# Endpoint 3.1: Cerca de Pokémon per autocompletar
 @app.get("/api/v1/pokemon/search")
 def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_client)):
     """
     Busca Pokémon pel terme de cerca 'q' i retorna una llista simplificada.
-    'es_client' s'injecta automàticament gràcies a Depends(get_es_client).
     """
-
-    # La consulta busca documents que comencin amb el terme de cerca (prefix)
     query = {
         "query": {
             "prefix": {
@@ -67,10 +54,7 @@ def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_cli
             }
         }
     }
-
     response = es_client.search(index="pokemon", body=query)
-
-    # Formategem la resposta
     results = []
     for hit in response['hits']['hits']:
         pokemon = hit['_source']
@@ -79,20 +63,75 @@ def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_cli
             "name": pokemon.get("name", "N/A").capitalize(),
             "types": pokemon.get("types"),
             "sprite_url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pokemon.get('pokedex_id')}.png",
-            "stats": pokemon.get("stats")  # <-- AFEGIT TAL COM HAS DEMANAT
+            "stats": pokemon.get("stats")
         })
-
     return results
 
+# --- NOU ENDPOINT: Ordenar Pokémon per Estadística ---
+# **** AQUEST HA D'ANAR ABANS DE .../{pokedex_id} ****
+@app.get("/api/v1/pokemon/sort")
+def sort_pokemon_by_stat(
+        stat: str,
+        order: str = "desc",
+        es_client: Elasticsearch = Depends(get_es_client)
+):
+    """
+    Retorna tots els Pokémon ordenats per una estadística específica.
+    """
+
+    # --- Validació de Paràmetres ---
+    stat_key = STAT_MAPPING.get(stat.lower())
+    if not stat_key:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Paràmetre 'stat' invàlid. Prova amb un de: {', '.join(STAT_MAPPING.keys())}"
+        )
+
+    order_direction = order.lower()
+    if order_direction not in ["asc", "desc"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Paràmetre 'order' invàlid. Ha de ser 'asc' o 'desc'."
+        )
+
+    elastic_stat_field = f"stats.{stat_key}"
+
+    # --- Construcció de la Consulta ---
+    query = {
+        "query": {
+            "match_all": {}
+        },
+        "sort": [
+            {
+                elastic_stat_field: {
+                    "order": order_direction
+                }
+            }
+        ],
+        "size": 200
+    }
+
+    # --- Execució i Resposta ---
+    response = es_client.search(index="pokemon", body=query)
+    results = []
+    for hit in response['hits']['hits']:
+        pokemon = hit['_source']
+        results.append({
+            "pokedex_id": pokemon.get("pokedex_id"),
+            "name": pokemon.get("name", "N/A").capitalize(),
+            "types": pokemon.get("types"),
+            "sprite_url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pokemon.get('pokedex_id')}.png",
+            "stats": pokemon.get("stats")
+        })
+    return results
 
 # Endpoint 3.2: Obtenir detalls d'un Pokémon
+# **** AQUEST HA D'ANAR DESPRÉS DE .../sort ****
 @app.get("/api/v1/pokemon/{pokedex_id}")
 def get_pokemon_details(pokedex_id: int, es_client: Elasticsearch = Depends(get_es_client)):
     """
     Retorna tota la informació d'un Pokémon a partir del seu número de Pokédex.
     """
-
-    # Creem la consulta per buscar un document amb un 'pokedex_id' específic
     query = {
         "query": {
             "term": {
@@ -100,13 +139,8 @@ def get_pokemon_details(pokedex_id: int, es_client: Elasticsearch = Depends(get_
             }
         }
     }
-
     response = es_client.search(index="pokemon", body=query)
-
     if response['hits']['total']['value'] > 0:
-        # Retornem el document sencer (el '_source')
         return response['hits']['hits'][0]['_source']
     else:
-        # Si no es troba, llancem un error HTTP 404
         raise HTTPException(status_code=404, detail="Pokémon no trobat")
-
