@@ -1,0 +1,9 @@
+# Dependències per al Sistema de IA de Recomanació
+# PokeBuilder - Projecte Universitari
+
+# Elasticsearch client (versió compatible amb Elasticsearch 8.x)
+elasticsearch<9.0.0
+
+# Nota: Aquestes dependències ja haurien d'estar instal·lades pel backend
+# Si executes els mòduls d'IA de forma independent, assegura't d'instal·lar-les:
+# pip install -r requirements.txt
