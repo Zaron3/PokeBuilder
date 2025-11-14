@@ -2,31 +2,20 @@
 <html lang="ca">
 
 <head>
-  <!-- ============================================================
-       🧭 META I CONFIGURACIÓ BÀSICA
-       ============================================================ -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PokeBuilder — Equip</title>
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
 
-  <!-- Full CSS -->
   <link rel="stylesheet" href="style.css" />
 </head>
 
-<!-- ============================================================
-     🌙 MODE FOSC FIX (sense selector)
-     ============================================================ -->
 <body class="dark">
 
-  <!-- ============================================================
-       🔝 CAPÇALERA / NAVBAR
-       ============================================================ -->
-    <header class="header">
+  <header class="header">
     <div class="brand">
       <img src="src/pokeball-icon.svg" alt="Pokéball" class="brand-icon" />
       <span class="brand-name">PokeBuilder</span>
@@ -41,36 +30,26 @@
   </header>
 
 
-  <!-- ============================================================
-       🧩 CONTINGUT PRINCIPAL
-       ============================================================ -->
   <main class="container">
 
-    <!-- 🧱 EQUIP SUPERIOR -->
     <section class="team-top">
       <h2 class="section-title">El teu equip</h2>
 
       <div id="team-grid" class="team-grid">
-        <!-- JS renderitza 6 targetes o slots -->
-      </div>
+        </div>
     </section>
 
-    <!-- 🌀 CARRUSEL 3D INFERIOR -->
     <section class="carousel-area">
       <h3 class="section-title subtle">Vista 3D</h3>
 
       <div class="wrapper">
         <div id="carousel-inner" class="inner" style="--quantity: 0;">
-          <!-- JS injecta targetes 3D aquí -->
-        </div>
+          </div>
       </div>
     </section>
 
   </main>
 
-  <!-- ============================================================
-       🔍 MODAL DE CERCA DE POKÉMON
-       ============================================================ -->
   <div id="pokemon-modal" class="modal" aria-hidden="true">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="search-title">
       <button class="close-btn" aria-label="Tanca">×</button>
@@ -88,9 +67,6 @@
     </div>
   </div>
 
-  <!-- ============================================================
-       💡 MODAL DE RECOMANACIÓ
-       ============================================================ -->
   <div id="recommend-modal" class="modal" aria-hidden="true">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="rec-title">
       <button class="close-btn" aria-label="Tanca">×</button>
@@ -99,14 +75,55 @@
 
       <div id="recommend-content">
         <img id="recommend-sprite" src="" alt="Pokémon Recomanat" />
-        <p id="recommend-text"></p>
+
+        <div id="recommend-status">
+          </div>
+
+        <div id="recommend-results" style="display: none;">
+          
+          <div style="text-align: center;">
+            <h3 id="rec-name" style="margin-top: 0;"></h3>
+            <p id="rec-id" style="color: #888; margin: 5px 0;"></p>
+            <p style="margin: 10px 0;">
+              <strong>Tipus:</strong> <span id="rec-types"></span>
+            </p>
+            <p style="margin: 10px 0;">
+              <strong>Puntuació:</strong> <span id="rec-score"></span>/100
+            </p>
+          </div>
+          
+          <div style="margin-top: 20px; text-align: left;">
+            <h4 style="margin-bottom: 10px; color: #4CAF50;">✨ Per què aquest Pokémon?</h4>
+            <ul id="rec-reasoning" style="margin: 0; padding-left: 20px; line-height: 1.6;">
+              </ul>
+          </div>
+          
+          <div id="rec-warnings-container" style="display: none; margin-top: 20px; text-align: left;">
+            <h4 style="margin-bottom: 10px; color: #D32F2F;">⚠️ Compte amb...</h4>
+            <ul id="rec-warnings" style="margin: 0; padding-left: 20px; line-height: 1.6;">
+              </ul>
+          </div>
+          <div style="margin-top: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 8px;">
+            <h4 style="margin: 0 0 10px 0; font-size: 0.9em;">📊 Detall de Puntuacions</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
+              <div>🛡️ Defensiva: <span id="rec-score-def">0</span>/100</div>
+              <div>⚔️ Ofensiva: <span id="rec-score-off">0</span>/100</div>
+              <div>🌈 Diversitat: <span id="rec-score-div">0</span>/100</div>
+              <div>💪 Estadístiques: <span id="rec-score-stats">0</span>/100</div>
+            </div>
+          </div>
+          
+          <div id="rec-others-container" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+            <h4 style="margin-bottom: 10px; font-size: 0.9em;">🎯 Altres recomanacions:</h4>
+            <ul id="rec-others-list" style="margin: 0; padding-left: 20px; font-size: 0.85em;">
+              </ul>
+          </div>
+          
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ============================================================
-       ⚙️ SCRIPT PRINCIPAL
-       ============================================================ -->
   <script src="app.js"></script>
 
 </body>

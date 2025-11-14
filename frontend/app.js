@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let editingIndex = null;
 
   /* ============================================================
-     🧭 DOM ELEMENTS
+     🧭 DOM ELEMENTS (ACTUALITZAT)
      ============================================================ */
   const teamGrid       = document.getElementById("team-grid");
   const carouselInner  = document.getElementById("carousel-inner");
@@ -85,7 +85,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const recommendBtn     = document.getElementById("recommend-btn");
   const recommendCloseBtn= recommendModal.querySelector(".close-btn");
   const recommendSprite  = document.getElementById("recommend-sprite");
-  const recommendText    = document.getElementById("recommend-text");
+  // ACTUALITZAT:
+  const recommendStatus  = document.getElementById("recommend-status");
+  const recommendResults = document.getElementById("recommend-results");
 
   const randomBtn = document.getElementById("random-btn");
   const clearBtn  = document.getElementById("clear-btn");
@@ -329,10 +331,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     populateList(mockPokemonData);
     searchModal.style.display = "block";
     searchBar.focus();
+    document.body.style.overflow = 'hidden';
   };
   const closeSearch = () => {
     searchModal.style.display = "none";
     editingIndex = null;
+    document.body.style.overflow = '';
   };
 
   const getSelectedNames = () => team.filter(Boolean).map(p=>p.name.toLowerCase());
@@ -373,21 +377,150 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   /* ============================================================
-     💡 RECOMANACIÓ
+     💡 RECOMANACIÓ AMB IA (ACTUALITZAT)
      ============================================================ */
-  const openRecommendModal = () => {
-    const selected = new Set(getSelectedNames());
-    const candidates = mockPokemonData.filter(p => !selected.has(p.name.toLowerCase()));
-    if (candidates.length === 0) return alert("No hi ha Pokémon per recomanar.");
-    const recommended = candidates[Math.floor(Math.random() * candidates.length)];
+  const openRecommendModal = async () => {
+    // Obtenir IDs de l'equip actual
+    const teamIds = team.filter(Boolean).map(p => p.pokedex_id);
+    
+    if (teamIds.length === 0) {
+      alert("Afegeix almenys un Pokémon a l'equip per obtenir recomanacions.");
+      return;
+    }
+    
+    if (teamIds.length >= 6) {
+      alert("L'equip ja està complet!");
+      return;
+    }
+    
+    try {
+      // 1. Reset i mostrar estat de càrrega
+      recommendResults.style.display = "none"; // Amaga resultats antics
+      recommendStatus.style.display = "block"; // Mostra text d'estat
+      recommendStatus.innerHTML = "<p style='text-align: center;'>⏳ Analitzant el teu equip...</p>";
+      recommendSprite.src = ""; // Neteja sprite antic
+      recommendModal.style.display = "block";
+      
+      // Cridar a l'API d'IA
+      const response = await fetch(`${API_BASE}/ai/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ team_ids: teamIds })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.recommendations || data.recommendations.length === 0) {
+        recommendStatus.innerHTML = "<p>No s'han trobat recomanacions.</p>";
+        return;
+      }
+      
+      // Obtenir la millor recomanació
+      const topRec = data.recommendations[0];
+      
+      // 2. Omplir l'estructura HTML amb les dades
+      recommendSprite.src = topRec.sprite_url;
+      recommendSprite.alt = topRec.name;
+      
+      // Capçalera
+      document.getElementById("rec-name").textContent = topRec.name.toUpperCase();
+      document.getElementById("rec-id").textContent = padId(topRec.pokedex_id);
+      document.getElementById("rec-types").textContent = topRec.types.map(t => t.toUpperCase()).join(', ');
+      document.getElementById("rec-score").textContent = topRec.score;
+      
+      // Raonament (PROS)
+      const reasoningList = document.getElementById("rec-reasoning");
+      const mainReasons = topRec.reasoning.slice(0, 5);
+      reasoningList.innerHTML = mainReasons.map(reason => `<li>${reason}</li>`).join('');
 
-    recommendSprite.src = recommended.sprite_url;
-    recommendSprite.alt = recommended.name;
-    recommendText.textContent = `Et recomanem afegir ${recommended.name} (${padId(recommended.pokedex_id)}).`;
-    recommendModal.style.display = "block";
+      // ==================================================
+      // ============= NOU BLOC D'AVISOS ================
+      // ==================================================
+      const warningsContainer = document.getElementById('rec-warnings-container');
+      const warningsList = document.getElementById('rec-warnings');
+
+      // 1. Neteja els avisos anteriors
+      warningsList.innerHTML = '';
+
+      // 2. Comprova si hi ha avisos (warnings) a la resposta de l'API
+      if (topRec.warnings && topRec.warnings.length > 0) {
+          
+          // 3. Afegeix cada avís a la llista
+          topRec.warnings.forEach(warningText => {
+              const li = document.createElement('li');
+              li.textContent = warningText;
+              warningsList.appendChild(li);
+          });
+          
+          // 4. Mostra el contenidor d'avisos
+          warningsContainer.style.display = 'block';
+      
+      } else {
+          // 5. Si no hi ha avisos, assegura't que el contenidor està amagat
+          warningsContainer.style.display = 'none';
+      }
+      // ==================================================
+      // ============ FI DEL NOU BLOC D'AVISOS ============
+      // ==================================================
+
+
+      // Detall de Puntuacions
+      document.getElementById("rec-score-def").textContent = topRec.scores.defensive;
+      document.getElementById("rec-score-off").textContent = topRec.scores.offensive;
+      document.getElementById("rec-score-div").textContent = topRec.scores.diversity;
+      document.getElementById("rec-score-stats").textContent = topRec.scores.stats;
+      
+      // Altres recomanacions (opcional)
+      const othersContainer = document.getElementById("rec-others-container");
+      const othersList = document.getElementById("rec-others-list");
+      
+      if (data.recommendations.length > 1) {
+        const otherRecs = data.recommendations.slice(1, 4);
+        othersList.innerHTML = otherRecs.map(rec => `<li>${rec.name.toUpperCase()} (${rec.score}/100)</li>`).join('');
+        othersContainer.style.display = "block";
+      } else {
+        othersContainer.style.display = "none";
+        othersList.innerHTML = "";
+      }
+      
+      // 3. Amagar l'estat de càrrega i mostrar els resultats
+      recommendStatus.style.display = "none";
+      recommendResults.style.display = "block";
+      
+    } catch (error) {
+      console.error("❌ Error obtenint recomanacions:", error);
+      
+      // Assegura't que els resultats estiguin amagats si hi ha error
+      recommendResults.style.display = "none";
+      recommendStatus.style.display = "block";
+      
+      // Mostra l'error al contenidor d'estat
+      recommendStatus.innerHTML = `
+        <div style="text-align: center; color: #f44336;">
+          <p><strong>❌ Error</strong></p>
+          <p>No s'han pogut obtenir recomanacions.</p>
+          <p style="font-size: 0.85em; color: #888;">${error.message}</p>
+          <p style="font-size: 0.85em; margin-top: 15px;">
+            Assegura't que el servei d'IA està funcionant.<br>
+            Pots comprovar l'estat a: <code>${API_BASE}/ai/status</code>
+          </p>
+        </div>
+      `;
+    }
   };
   const closeRecommendModal = () => recommendModal.style.display = "none";
-  const updateRecommendState = () => recommendBtn.disabled = !(team.filter(Boolean).length >= 5);
+  document.body.style.overflow = '';
+  const updateRecommendState = () => {
+    const teamSize = team.filter(Boolean).length;
+    // Habilitar el botó si hi ha almenys 1 Pokémon i menys de 6
+    recommendBtn.disabled = !(teamSize >= 1 && teamSize < 6);
+  };
 
   /* ============================================================
      🌀 CARRUSEL 3D

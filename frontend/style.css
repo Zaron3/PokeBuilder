@@ -43,7 +43,7 @@ body {
 
 html, body {
   height: 100%;
-  overflow-y: hidden; /* Evita el scroll vertical */
+ /* Evita el scroll vertical */
 }
 
 
@@ -486,6 +486,8 @@ html, body {
   box-shadow: var(--shadow-lg);
   position: relative;
   color: var(--ink);
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .close-btn {
@@ -545,6 +547,9 @@ html, body {
   height: 42px;
   image-rendering: pixelated;
 }
+#pokemon-list::-webkit-scrollbar {
+  display: none;                 /* amaga barra a Chrome/Edge/Safari */
+}
 
 /* Amagar la barra de scroll però mantenir el desplaçament */
 #pokemon-list {
@@ -552,9 +557,7 @@ html, body {
   scrollbar-width: none;         /* amaga barra a Firefox */
 }
 
-#pokemon-list::-webkit-scrollbar {
-  display: none;                 /* amaga barra a Chrome/Edge/Safari */
-}
+
 
 
 /* ============================================================
