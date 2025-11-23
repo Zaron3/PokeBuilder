@@ -1,10 +1,43 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
 from elasticsearch import Elasticsearch
 # Assegura't d'haver instal·lat la versió correcta! ("pip install 'elasticsearch<9.0.0'")
 from elasticsearch.exceptions import ConnectionError as ESConnectionError
+import sys
+import os
+
+# Afegir el directori 'ia' al path per importar els mòduls
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ia'))
+try:
+    from ai_service import AIService
+    AI_ENABLED = True
+except ImportError as e:
+    print(f"⚠️ No s'ha pogut carregar el servei d'IA: {e}")
+    AI_ENABLED = False
 
 # Creem una instància de l'aplicació
 app = FastAPI()
+
+# Configurar CORS per permetre peticions des del frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # En producció, especificar els orígens permesos
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Inicialitzar servei d'IA
+ai_service = None
+if AI_ENABLED:
+    try:
+        ai_service = AIService()
+        print("✓ Servei d'IA inicialitzat correctament")
+    except Exception as e:
+        print(f"✗ Error inicialitzant servei d'IA: {e}")
+        AI_ENABLED = False
 
 # --- Diccionari de Mapeig per a les Estadístiques ---
 # Tradueix els noms amigables (URL) als noms dels camps a Elasticsearch
@@ -144,3 +177,95 @@ def get_pokemon_details(pokedex_id: int, es_client: Elasticsearch = Depends(get_
         return response['hits']['hits'][0]['_source']
     else:
         raise HTTPException(status_code=404, detail="Pokémon no trobat")
+
+# --- ENDPOINTS D'IA ---
+
+class TeamRequest(BaseModel):
+    """Model per a les peticions d'equip."""
+    team_ids: List[int]
+
+@app.post("/api/v1/ai/recommend")
+def recommend_pokemon(request: TeamRequest):
+    """
+    Retorna recomanacions de Pokémon basades en l'equip actual.
+    
+    Args:
+        request: Objecte amb la llista d'IDs de l'equip actual
+        
+    Returns:
+        Llista de recomanacions amb puntuacions i raonament
+    """
+    if not AI_ENABLED or ai_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="El servei d'IA no està disponible"
+        )
+    
+    try:
+        team_ids = request.team_ids
+        
+        # Validar que no hi hagi més de 5 Pokémon
+        if len(team_ids) >= 6:
+            raise HTTPException(
+                status_code=400,
+                detail="L'equip ja està complet (6 Pokémon)"
+            )
+        
+        # Generar recomanacions
+        recommendations = ai_service.recommend_pokemon(team_ids, top_n=5)
+        
+        return {
+            "success": True,
+            "team_size": len(team_ids),
+            "recommendations": recommendations
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generant recomanacions: {str(e)}"
+        )
+
+@app.post("/api/v1/ai/analyze")
+def analyze_team(request: TeamRequest):
+    """
+    Analitza un equip i retorna les seves fortaleses i debilitats.
+    
+    Args:
+        request: Objecte amb la llista d'IDs de l'equip
+        
+    Returns:
+        Anàlisi detallat de l'equip
+    """
+    if not AI_ENABLED or ai_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="El servei d'IA no està disponible"
+        )
+    
+    try:
+        analysis = ai_service.analyze_team(request.team_ids)
+        
+        return {
+            "success": True,
+            "analysis": analysis
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error analitzant equip: {str(e)}"
+        )
+
+@app.get("/api/v1/ai/status")
+def ai_status():
+    """
+    Retorna l'estat del servei d'IA.
+    """
+    return {
+        "enabled": AI_ENABLED,
+        "service_initialized": ai_service is not None,
+        "types_loaded": len(ai_service.type_chart) if ai_service else 0
+    }
