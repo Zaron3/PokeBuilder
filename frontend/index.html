@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="ca">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PokeBuilder — Equip</title>
+  <title>PokeBuilder</title>
 
+  <link rel="icon" type="image/svg+xml" href="src/pokeball-icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -20,32 +20,58 @@
       <img src="src/pokeball-icon.svg" alt="Pokéball" class="brand-icon" />
       <span class="brand-name">PokeBuilder</span>
     </div>
-
-    <nav class="actions">
-      <button id="recommend-btn" class="glass-btn blue" disabled>Recomana’m</button>
-      <button id="random-btn" class="glass-btn gray">Equip aleatori</button>
-      <button id="clear-btn" class="glass-btn red">Buida equip</button>
-      <button id="add-btn" class="glass-btn outline">Afegeix Pokémon</button>
-    </nav>
   </header>
-
 
   <main class="container">
 
     <section class="team-top">
       <h2 class="section-title">El teu equip</h2>
-
       <div id="team-grid" class="team-grid">
         </div>
     </section>
 
     <section class="carousel-area">
       <h3 class="section-title subtle">Vista 3D</h3>
-
       <div class="wrapper">
-        <div id="carousel-inner" class="inner" style="--quantity: 0;">
-          </div>
+        <div id="carousel-inner" class="inner" style="--quantity: 0;"></div>
       </div>
+    </section>
+
+    <section class="holo-stats-container">
+      
+      <div class="holo-card glass-neon blue">
+        <div class="holo-icon">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <div class="holo-content">
+          <span class="holo-label">TEAM POWER</span>
+          <h2 id="team-power-val">0</h2>
+        </div>
+        <div class="holo-bg"></div>
+      </div>
+
+      <div class="holo-card glass-neon purple">
+        <div class="holo-icon">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        </div>
+        <div class="holo-content">
+          <span class="holo-label">DOMINI</span>
+          <h2 id="team-dominant-val">-</h2>
+        </div>
+        <div class="holo-bg"></div>
+      </div>
+
+      <div class="holo-card glass-neon red">
+        <div class="holo-icon">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </div>
+        <div class="holo-content">
+          <span class="holo-label">VULNERABLE A</span>
+          <h2 id="team-weak-val">-</h2>
+        </div>
+        <div class="holo-bg"></div>
+      </div>
+
     </section>
 
   </main>
@@ -59,69 +85,122 @@
       <input
         type="text"
         id="search-bar"
-        placeholder="Cerca (ex: Pikachu)..."
+        placeholder="Cerca per nom (ex: Pikachu)..."
         aria-label="Cercar Pokémon"
+        autocomplete="off"
       />
+
+      <div class="sort-controls">
+        <select id="sort-stat" class="sort-select">
+          <option value="" disabled selected>Filtrar per Stats...</option>
+          <option value="hp">Vida (HP)</option>
+          <option value="atac">Atac</option>
+          <option value="defensa">Defensa</option>
+          <option value="atac_especial">Atac Especial</option>
+          <option value="defensa_especial">Defensa Especial</option>
+          <option value="velocitat">Velocitat</option>
+        </select>
+
+        <select id="sort-order" class="sort-select">
+          <option value="desc">Major a Menor</option>
+          <option value="asc">Menor a Major</option>
+        </select>
+
+        <button id="apply-sort-btn" class="ui-btn primary small">Aplicar</button>
+      </div>
 
       <ul id="pokemon-list" aria-live="polite"></ul>
     </div>
   </div>
-
+  
   <div id="recommend-modal" class="modal" aria-hidden="true">
-    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="rec-title">
+    <div class="modal-content glass-panel" role="dialog">
       <button class="close-btn" aria-label="Tanca">×</button>
 
-      <h2 id="rec-title">Suggeriment 💡</h2>
+      <div id="recommend-status"></div>
 
-      <div id="recommend-content">
-        <img id="recommend-sprite" src="" alt="Pokémon Recomanat" />
-
-        <div id="recommend-status">
-          </div>
-
-        <div id="recommend-results" style="display: none;">
-          
-          <div style="text-align: center;">
-            <h3 id="rec-name" style="margin-top: 0;"></h3>
-            <p id="rec-id" style="color: #888; margin: 5px 0;"></p>
-            <p style="margin: 10px 0;">
-              <strong>Tipus:</strong> <span id="rec-types"></span>
-            </p>
-            <p style="margin: 10px 0;">
-              <strong>Puntuació:</strong> <span id="rec-score"></span>/100
-            </p>
+      <div id="recommend-results" style="display: none;">
+        
+        <div class="rec-header">
+          <div class="rec-visual">
+             <img id="recommend-sprite" src="" alt="Pokémon" />
+             <div class="rec-score-badge">
+                <span id="rec-score">0</span>
+                <small>% FIT</small>
+             </div>
           </div>
           
-          <div style="margin-top: 20px; text-align: left;">
-            <h4 style="margin-bottom: 10px; color: #4CAF50;">✨ Per què aquest Pokémon?</h4>
-            <ul id="rec-reasoning" style="margin: 0; padding-left: 20px; line-height: 1.6;">
-              </ul>
+          <div class="rec-info">
+             <h2 id="rec-name">NOM POKEMON</h2>
+             <p id="rec-id">#000</p>
+             <div id="rec-types" class="type-row"></div>
           </div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="rec-grid">
           
-          <div id="rec-warnings-container" style="display: none; margin-top: 20px; text-align: left;">
-            <h4 style="margin-bottom: 10px; color: #D32F2F;">⚠️ Compte amb...</h4>
-            <ul id="rec-warnings" style="margin: 0; padding-left: 20px; line-height: 1.6;">
-              </ul>
-          </div>
-          <div style="margin-top: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 8px;">
-            <h4 style="margin: 0 0 10px 0; font-size: 0.9em;">📊 Detall de Puntuacions</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85em;">
-              <div>🛡️ Defensiva: <span id="rec-score-def">0</span>/100</div>
-              <div>⚔️ Ofensiva: <span id="rec-score-off">0</span>/100</div>
-              <div>🌈 Diversitat: <span id="rec-score-div">0</span>/100</div>
-              <div>💪 Estadístiques: <span id="rec-score-stats">0</span>/100</div>
+          <div class="rec-column">
+            <h4 class="rec-subtitle">
+              Motius de la selecció
+            </h4>
+            <ul id="rec-reasoning" class="rec-list pros"></ul>
+
+            <div id="rec-warnings-container" style="display:none">
+               <h4 class="rec-subtitle warning">
+                 Atenció
+               </h4>
+               <ul id="rec-warnings" class="rec-list cons"></ul>
             </div>
           </div>
-          
-          <div id="rec-others-container" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
-            <h4 style="margin-bottom: 10px; font-size: 0.9em;">🎯 Altres recomanacions:</h4>
-            <ul id="rec-others-list" style="margin: 0; padding-left: 20px; font-size: 0.85em;">
-              </ul>
+
+          <div class="rec-column stats-col">
+             <h4 class="rec-subtitle">
+               Anàlisi d'Impacte
+             </h4>
+             
+             <div class="stat-row">
+                <span>Defensiva</span>
+                <div class="progress-bar"><div id="bar-def" style="width: 0%"></div></div>
+             </div>
+             <div class="stat-row">
+                <span>Ofensiva</span>
+                <div class="progress-bar"><div id="bar-off" style="width: 0%"></div></div>
+             </div>
+             <div class="stat-row">
+                <span>Sinergia</span>
+                <div class="progress-bar"><div id="bar-div" style="width: 0%"></div></div>
+             </div>
           </div>
-          
         </div>
+
+        <div id="rec-action-container" class="rec-action-area">
+          <button id="accept-rec-btn" class="glow-btn">
+            Afegir a l'equip
+          </button>
+        </div>
+
       </div>
     </div>
+  </div>
+
+  <div class="floating-menu">
+    <button id="recommend-btn" class="fab-btn blue" title="Recomana'm" disabled>
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"></path><path d="M9 21h6"></path></svg>
+    </button>
+
+    <button id="random-btn" class="fab-btn gray" title="Equip Aleatori">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 8h.01"></path><path d="M8 8h.01"></path><path d="M8 16h.01"></path><path d="M16 16h.01"></path><path d="M12 12h.01"></path></svg>
+    </button>
+
+    <button id="add-btn" class="fab-btn outline" title="Afegeix Pokémon">
+      <svg width="28" height="28" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+
+    <button id="clear-btn" class="fab-btn red" title="Buida Equip">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+    </button>
   </div>
 
   <script src="app.js"></script>
