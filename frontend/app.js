@@ -1,28 +1,49 @@
 /* ============================================================
-   ⚡️ POKEBUILDER — APP PRINCIPAL (mode fosc fix + backend real)
+   POKEBUILDER — APP PRINCIPAL
+   Backend: FastAPI (Elasticsearch + AI)
+   Frontend: Vanilla JS
    ============================================================ */
+
 document.addEventListener("DOMContentLoaded", async () => {
 
   /* ============================================================
-     ⚙️ CONFIGURACIÓ BACKEND
+     CONFIGURACIÓ BACKEND
      ============================================================ */
   const API_BASE = "http://127.0.0.1:8000/api/v1";
 
   /* ============================================================
-     📦 FUNCIONS BACKEND
+     FUNCIONS DE DADES (API)
      ============================================================ */
+  
+  // Cerca bàsica per prefix
   async function fetchPokemons(query) {
     try {
       const res = await fetch(`${API_BASE}/pokemon/search?q=${query}`);
       if (!res.ok) throw new Error("Error de connexió amb l'API");
       return await res.json();
     } catch (err) {
-      console.error("❌ Error carregant Pokémon:", err);
+      console.error("Error carregant Pokémon:", err);
       return [];
     }
   }
 
-  // 🔄 Carrega tots els Pokémon (reals, fent servir la mateixa API)
+  // Nova funció per obtenir Pokémon ordenats per estadística
+  async function fetchSortedPokemons(stat, order) {
+    try {
+      const res = await fetch(`${API_BASE}/pokemon/sort?stat=${stat}&order=${order}`);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Error ordenant Pokémon");
+      }
+      return await res.json();
+    } catch (err) {
+      console.error("Error ordenant:", err);
+      alert("Error: " + err.message);
+      return [];
+    }
+  }
+
+  // Carrega inicial de tots els Pokémon
   async function fetchAllPokemons() {
     const letters = "abcdefghijklmnopqrstuvwxyz".split("");
     const all = [];
@@ -39,13 +60,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     all.sort((a, b) => a.pokedex_id - b.pokedex_id);
-    console.log(`✅ Carregats ${all.length} Pokémon reals des del backend`);
+    console.log(`Dades carregades: ${all.length} Pokémon.`);
     return all;
   }
 
   /* ============================================================
-     🎨 COLORS PER TIPUS
+     UTILITATS I CONSTANTS
      ============================================================ */
+  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  
+  const getSpriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+  const padId = n => `#${String(n).padStart(3, "0")}`;
+
   const TYPE_RGB = {
     normal:[168,168,120], fire:[240,128,48], water:[104,144,240],
     electric:[248,208,48], grass:[120,200,80], ice:[152,216,216],
@@ -55,146 +81,114 @@ document.addEventListener("DOMContentLoaded", async () => {
     dark:[112,88,72], steel:[184,184,208], fairy:[238,153,172]
   };
 
-  const getSpriteUrl = id =>
-    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
-
-  const padId = n => `#${String(n).padStart(3, "0")}`;
   const typeToRGB = t => {
     const arr = TYPE_RGB[t] || [200,200,200];
     return `${arr[0]}, ${arr[1]}, ${arr[2]}`;
   };
 
   /* ============================================================
-     ⚙️ ESTAT GLOBAL
+     ESTAT GLOBAL
      ============================================================ */
-  const team = Array(6).fill(null);
+  let savedData = localStorage.getItem("currentTeam");
+  let team = savedData ? JSON.parse(savedData) : Array(6).fill(null);
   let editingIndex = null;
+  
+  // Dades en memòria per a la cerca ràpida
+  let mockPokemonData = [];
 
   /* ============================================================
-     🧭 DOM ELEMENTS (ACTUALITZAT)
+     ELEMENTS DEL DOM
      ============================================================ */
+  // Equip i Carrusel
   const teamGrid       = document.getElementById("team-grid");
   const carouselInner  = document.getElementById("carousel-inner");
 
+  // Modal Cerca
   const searchModal    = document.getElementById("pokemon-modal");
   const searchBar      = document.getElementById("search-bar");
   const searchCloseBtn = searchModal.querySelector(".close-btn");
   const pokemonListUl  = document.getElementById("pokemon-list");
+  
+  // Controls d'Ordenació (Cerca)
+  const sortStatEl     = document.getElementById("sort-stat");
+  const sortOrderEl    = document.getElementById("sort-order");
+  const applySortBtn   = document.getElementById("apply-sort-btn");
 
+  // Modal Recomanació (IA)
   const recommendModal   = document.getElementById("recommend-modal");
   const recommendBtn     = document.getElementById("recommend-btn");
   const recommendCloseBtn= recommendModal.querySelector(".close-btn");
   const recommendSprite  = document.getElementById("recommend-sprite");
-  // ACTUALITZAT:
   const recommendStatus  = document.getElementById("recommend-status");
   const recommendResults = document.getElementById("recommend-results");
 
+  // Botons Acció Global
   const randomBtn = document.getElementById("random-btn");
   const clearBtn  = document.getElementById("clear-btn");
   const addBtn    = document.getElementById("add-btn");
 
+  // Holo Stats
+  const powerEl = document.getElementById("team-power-val");
+  const domEl = document.getElementById("team-dominant-val");
+  const weakEl = document.getElementById("team-weak-val");
+
+
   /* ============================================================
-     🧩 DADES DEL BACKEND REAL
+     CÀRREGA INICIAL DE DADES
      ============================================================ */
-  let mockPokemonData = [];
   try {
     mockPokemonData = await fetchAllPokemons();
   } catch (e) {
-    console.error("Error carregant Pokémon des de FastAPI:", e);
-  }
-
-  if (mockPokemonData.length === 0) {
-    console.warn("⚠️ No s'han carregat Pokémon. Comprova el backend.");
+    console.error("Error critical carregant dades:", e);
   }
 
   /* ============================================================
-     🧱 RENDER DE L’EQUIP
+     FUNCIONS DE RENDERITZAT (UI)
      ============================================================ */
+
+  // Renderitza la graella principal de l'equip
   const renderTeamGrid = () => {
     teamGrid.innerHTML = "";
 
     team.forEach((poke, idx) => {
       if (!poke) {
+        // Targeta buida
         const add = document.createElement("div");
         add.className = "add-card";
         add.innerHTML = `<div class="plus">＋</div><div class="txt">Afegir Pokémon</div>`;
         add.addEventListener("click", () => openSearch(idx));
         teamGrid.appendChild(add);
       } else {
+        // Targeta plena
         teamGrid.appendChild(buildTopCard(poke, idx));
       }
     });
 
-    updateRecommendState();
+    updateRecommendButtonState();
     rebuildCarousel();
+    updateHoloStats();
   };
 
+  // Construeix la targeta individual del Pokémon
   const buildTopCard = (poke, idx) => {
-    const STAT_NAMES = {
-      hp: "HP",
-      attack: "Attack",
-      defense: "Defense",
-      special_attack: "Sp. Atk",
-      special_defense: "Sp. Def",
-      speed: "Speed"
-    };
-
-
     const type = poke.types ? poke.types[0] : "normal";
     const rgb = typeToRGB(type.toLowerCase());
+    
+    // Contenidor principal
     const card = document.createElement("div");
     card.className = "poke-card";
     card.style.setProperty("--type-rgb", rgb);
 
+    // Contenidor 3D
     const inner = document.createElement("div");
-    inner.className = "card-inner"; // Mantenim inner per si volem altres efectes
+    inner.className = "card-inner";
 
+    // --- CARA FRONTAL ---
     const front = document.createElement("div");
     front.className = "card-face card-front";
 
-    // --- NOU: CONTENIDOR DELS BOTONS D'ACCIÓ ---
-    const actions = document.createElement("div");
-    actions.className = "card-actions";
-
-    // Botó d'ELIMINAR
-    // Botó d'ELIMINAR
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "action-btn remove";
-    removeBtn.title = `Eliminar ${poke.name}`;
-    // Afegim una icona SVG de "creu"
-    removeBtn.innerHTML = `
-      <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-      </svg>
-    `;
-    removeBtn.addEventListener("click", e => {
-      e.stopPropagation(); // Evita que el clic es propagui a la targeta
-      removeFromTeam(idx);
-    });
-
-    // Botó d'EDITAR
-    const editBtn = document.createElement("button");
-    editBtn.className = "action-btn edit";
-    editBtn.title = `Editar ${poke.name}`;
-    // Afegim la teva imatge PNG
-    editBtn.innerHTML = `
-      <img src="src/edit-icon.png" alt="Editar" class="action-icon-img">
-    `;
-    editBtn.addEventListener("click", e => {
-      e.stopPropagation(); // Evita que el clic es propagui
-      // Aquí hauríem d'obrir un modal d'edició detallada
-      // De moment, farem que obri el modal de cerca com un "canvi ràpid"
-      openSearch(idx);
-    });
-
-    actions.append(removeBtn, editBtn); // Afegim els botons al contenidor d'accions
-    front.appendChild(actions); // Afegim el contenidor d'accions a la cara frontal
-    // --- FI NOU ---
-
-
     const head = document.createElement("div");
     head.className = "card-head";
-
     const img = document.createElement("img");
     img.className = "card-sprite";
     img.src = poke.sprite_url || getSpriteUrl(poke.pokedex_id);
@@ -203,327 +197,96 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const body = document.createElement("div");
     body.className = "card-body";
-
     const title = document.createElement("div");
     title.className = "card-title";
+    title.innerHTML = `
+      <div class="card-name">${capitalize(poke.name)}</div>
+      <div class="card-id">${padId(poke.pokedex_id)}</div>
+    `;
 
-    const name = document.createElement("div");
-    name.className = "card-name";
-    name.textContent = poke.name;
-
-    const id = document.createElement("div");
-    id.className = "card-id";
-    id.textContent = padId(poke.pokedex_id);
-
-    title.append(name, id);
-
-    // --- NOU BLOC PER A PÍNDOLES MÚLTIPLES ---
-    // 1. Creem un contenidor per a les píndoles
     const typePillContainer = document.createElement("div");
     typePillContainer.className = "type-pill-container";
-
-    // 2. Fem un bucle per cada tipus que tingui el Pokémon
-    poke.types.forEach(type => {
+    poke.types.forEach(t => {
       const pill = document.createElement("div");
       pill.className = "type-pill";
-      pill.textContent = type.toUpperCase();
-
-      // 3. Calculem i establim el color PER A CADA PÍNDOLA
-      //    Això sobreescriu el color de la targeta (que només tenia el primer tipus)
-      const rgb = typeToRGB(type.toLowerCase());
-      pill.style.setProperty("--type-rgb", rgb);
-
-      typePillContainer.appendChild(pill); // Afegim la píndola al contenidor
+      pill.textContent = t.toUpperCase();
+      pill.style.setProperty("--type-rgb", typeToRGB(t.toLowerCase()));
+      typePillContainer.appendChild(pill);
     });
-    // --- FI DEL NOU BLOC ---
 
-    body.append(title, typePillContainer); // Afegim el contenidor (amb les píndoles a dins) al body
+    body.append(title, typePillContainer);
     front.append(head, body);
 
-    // Eliminem la 'card-back' i el seu contingut, ja no la necessitem
-    // const back = document.createElement("div");
-    // back.className = "card-face card-back";
-    // back.innerHTML = `<div class="back-body">Clica per eliminar</div>`;
-
-    // --- NOU: CARA POSTERIOR (Estadístiques) ---
+    // --- CARA POSTERIOR ---
     const back = document.createElement("div");
     back.className = "card-face card-back";
 
-    // Títol
-    const statsTitle = document.createElement("h4");
-    statsTitle.className = "stats-title";
-    statsTitle.textContent = "Base Stats";
-    back.appendChild(statsTitle);
+    // Botons d'acció (Eliminar / Editar)
+    const actions = document.createElement("div");
+    actions.className = "card-actions-back";
 
-    // Llista d'Stats
-    const statsList = document.createElement("ul");
-    statsList.className = "stats-list";
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "action-btn remove";
+    removeBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+    removeBtn.addEventListener("click", e => {
+      e.stopPropagation(); 
+      removeFromTeam(idx);
+    });
 
-    // Assegura't que el teu 'poke.stats' del backend tingui aquest format
+    const editBtn = document.createElement("button");
+    editBtn.className = "action-btn edit";
+    editBtn.innerHTML = `<img src="src/edit-icon.png" style="width:16px; height:16px; filter: invert(1);">`; 
+    editBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      localStorage.setItem("currentTeam", JSON.stringify(team));
+      localStorage.setItem("editIndex", idx);
+      window.location.href = "edit.html";
+    });
+
+    actions.append(removeBtn, editBtn);
+    back.appendChild(actions);
+
+    // Estadístiques
+    const statsContainer = document.createElement("div");
+    statsContainer.className = "stats-container"; 
+
+    const statsList = document.createElement("div");
+    statsList.className = "stats-bars-container";
+
     if (poke.stats) {
-      const statsInOrder = [
-        ['hp', poke.stats.hp],
-        ['attack', poke.stats.attack],
-        ['defense', poke.stats.defense],
-        ['special_attack', poke.stats.special_attack],
-        ['special_defense', poke.stats.special_defense],
-        ['speed', poke.stats.speed]
-      ];
+        const statsInOrder = [
+            ['hp', 'HP'], ['attack', 'ATK'], ['defense', 'DEF'],
+            ['special_attack', 'SPA'], ['special_defense', 'SPD'], ['speed', 'SPE']
+        ];
+        const MAX_STAT = 150;
 
-      for (const [statName, statValue] of statsInOrder) {
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <span class="stat-name">${STAT_NAMES[statName] || statName}</span>
-          <span class="stat-value">${statValue}</span>
-        `;
-        statsList.appendChild(li);
-      }
+        statsInOrder.forEach(([key, label]) => {
+            const val = poke.stats[key];
+            const percent = Math.min((val / MAX_STAT) * 100, 100);
+            
+            const row = document.createElement("div");
+            row.className = "stat-row-compact";
+            row.innerHTML = `
+                <div class="stat-label">${label}</div>
+                <div class="stat-bar-track">
+                    <div class="stat-bar-fill" style="width: ${percent}%; background: rgb(${rgb})"></div>
+                </div>
+                <div class="stat-val">${val}</div>
+            `;
+            statsList.appendChild(row);
+        });
     }
-    back.appendChild(statsList);
+    statsContainer.appendChild(statsList);
+    back.appendChild(statsContainer);
 
-    inner.append(front, back); // Només afegim la cara frontal
+    inner.append(front, back);
     card.appendChild(inner);
 
-    // Eliminem l'event listener de clic a la targeta, ja que els botons ja ho gestionen
-    // card.addEventListener("click", () => removeFromTeam(idx));
     return card;
   };
 
   /* ============================================================
-     ❌ GESTIÓ D’EQUIP
-     ============================================================ */
-  const removeFromTeam = idx => {
-    team[idx] = null;
-    renderTeamGrid();
-    refreshSearchList();
-  };
-
-  const clearTeam = () => {
-    for (let i = 0; i < team.length; i++) team[i] = null;
-    renderTeamGrid();
-    refreshSearchList();
-  };
-
-  const fillRandomTeam = () => {
-    const emptySlots = team.map((v,i)=>v?null:i).filter(v=>v!==null);
-    const selected = new Set(getSelectedNames());
-    const pool = mockPokemonData.filter(p=>!selected.has(p.name.toLowerCase()));
-
-    for (let i=pool.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [pool[i],pool[j]]=[pool[j],pool[i]];
-    }
-
-    emptySlots.forEach((slot,k)=>{
-      if(pool[k]) team[slot]=pool[k];
-    });
-
-    renderTeamGrid();
-    refreshSearchList();
-  };
-
-  /* ============================================================
-     🔍 MODAL DE CERCA
-     ============================================================ */
-  const openSearch = index => {
-    editingIndex = index;
-    searchBar.value = "";
-    populateList(mockPokemonData);
-    searchModal.style.display = "block";
-    searchBar.focus();
-    document.body.style.overflow = 'hidden';
-  };
-  const closeSearch = () => {
-    searchModal.style.display = "none";
-    editingIndex = null;
-    document.body.style.overflow = '';
-  };
-
-  const getSelectedNames = () => team.filter(Boolean).map(p=>p.name.toLowerCase());
-
-  const refreshSearchList = async () => {
-    const query = (searchBar.value || "").toLowerCase().trim();
-    const selected = new Set(getSelectedNames());
-    let list = [];
-
-    if (query.length >= 2) {
-      list = await fetchPokemons(query);
-    } else {
-      list = mockPokemonData;
-    }
-
-    list = list.filter(p => !selected.has(p.name.toLowerCase()));
-    populateList(list);
-  };
-
-  const populateList = pokemons => {
-    pokemonListUl.innerHTML = "";
-    pokemons.forEach(pokemon => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <img src="${pokemon.sprite_url}" alt="${pokemon.name}" />
-        <span>${padId(pokemon.pokedex_id)} ${pokemon.name}</span>
-        <small>${pokemon.types.join(", ")}</small>
-      `;
-      li.addEventListener("click", () => {
-        if (editingIndex !== null) {
-          team[editingIndex] = pokemon;
-          renderTeamGrid();
-          closeSearch();
-        }
-      });
-      pokemonListUl.appendChild(li);
-    });
-  };
-
-  /* ============================================================
-     💡 RECOMANACIÓ AMB IA (ACTUALITZAT)
-     ============================================================ */
-  const openRecommendModal = async () => {
-    // Obtenir IDs de l'equip actual
-    const teamIds = team.filter(Boolean).map(p => p.pokedex_id);
-    
-    if (teamIds.length === 0) {
-      alert("Afegeix almenys un Pokémon a l'equip per obtenir recomanacions.");
-      return;
-    }
-    
-    if (teamIds.length >= 6) {
-      alert("L'equip ja està complet!");
-      return;
-    }
-    
-    try {
-      // 1. Reset i mostrar estat de càrrega
-      recommendResults.style.display = "none"; // Amaga resultats antics
-      recommendStatus.style.display = "block"; // Mostra text d'estat
-      recommendStatus.innerHTML = "<p style='text-align: center;'>⏳ Analitzant el teu equip...</p>";
-      recommendSprite.src = ""; // Neteja sprite antic
-      recommendModal.style.display = "block";
-      
-      // Cridar a l'API d'IA
-      const response = await fetch(`${API_BASE}/ai/recommend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ team_ids: teamIds })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.success || !data.recommendations || data.recommendations.length === 0) {
-        recommendStatus.innerHTML = "<p>No s'han trobat recomanacions.</p>";
-        return;
-      }
-      
-      // Obtenir la millor recomanació
-      const topRec = data.recommendations[0];
-      
-      // 2. Omplir l'estructura HTML amb les dades
-      recommendSprite.src = topRec.sprite_url;
-      recommendSprite.alt = topRec.name;
-      
-      // Capçalera
-      document.getElementById("rec-name").textContent = topRec.name.toUpperCase();
-      document.getElementById("rec-id").textContent = padId(topRec.pokedex_id);
-      document.getElementById("rec-types").textContent = topRec.types.map(t => t.toUpperCase()).join(', ');
-      document.getElementById("rec-score").textContent = topRec.score;
-      
-      // Raonament (PROS)
-      const reasoningList = document.getElementById("rec-reasoning");
-      const mainReasons = topRec.reasoning.slice(0, 5);
-      reasoningList.innerHTML = mainReasons.map(reason => `<li>${reason}</li>`).join('');
-
-      // ==================================================
-      // ============= NOU BLOC D'AVISOS ================
-      // ==================================================
-      const warningsContainer = document.getElementById('rec-warnings-container');
-      const warningsList = document.getElementById('rec-warnings');
-
-      // 1. Neteja els avisos anteriors
-      warningsList.innerHTML = '';
-
-      // 2. Comprova si hi ha avisos (warnings) a la resposta de l'API
-      if (topRec.warnings && topRec.warnings.length > 0) {
-          
-          // 3. Afegeix cada avís a la llista
-          topRec.warnings.forEach(warningText => {
-              const li = document.createElement('li');
-              li.textContent = warningText;
-              warningsList.appendChild(li);
-          });
-          
-          // 4. Mostra el contenidor d'avisos
-          warningsContainer.style.display = 'block';
-      
-      } else {
-          // 5. Si no hi ha avisos, assegura't que el contenidor està amagat
-          warningsContainer.style.display = 'none';
-      }
-      // ==================================================
-      // ============ FI DEL NOU BLOC D'AVISOS ============
-      // ==================================================
-
-
-      // Detall de Puntuacions
-      document.getElementById("rec-score-def").textContent = topRec.scores.defensive;
-      document.getElementById("rec-score-off").textContent = topRec.scores.offensive;
-      document.getElementById("rec-score-div").textContent = topRec.scores.diversity;
-      document.getElementById("rec-score-stats").textContent = topRec.scores.stats;
-      
-      // Altres recomanacions (opcional)
-      const othersContainer = document.getElementById("rec-others-container");
-      const othersList = document.getElementById("rec-others-list");
-      
-      if (data.recommendations.length > 1) {
-        const otherRecs = data.recommendations.slice(1, 4);
-        othersList.innerHTML = otherRecs.map(rec => `<li>${rec.name.toUpperCase()} (${rec.score}/100)</li>`).join('');
-        othersContainer.style.display = "block";
-      } else {
-        othersContainer.style.display = "none";
-        othersList.innerHTML = "";
-      }
-      
-      // 3. Amagar l'estat de càrrega i mostrar els resultats
-      recommendStatus.style.display = "none";
-      recommendResults.style.display = "block";
-      
-    } catch (error) {
-      console.error("❌ Error obtenint recomanacions:", error);
-      
-      // Assegura't que els resultats estiguin amagats si hi ha error
-      recommendResults.style.display = "none";
-      recommendStatus.style.display = "block";
-      
-      // Mostra l'error al contenidor d'estat
-      recommendStatus.innerHTML = `
-        <div style="text-align: center; color: #f44336;">
-          <p><strong>❌ Error</strong></p>
-          <p>No s'han pogut obtenir recomanacions.</p>
-          <p style="font-size: 0.85em; color: #888;">${error.message}</p>
-          <p style="font-size: 0.85em; margin-top: 15px;">
-            Assegura't que el servei d'IA està funcionant.<br>
-            Pots comprovar l'estat a: <code>${API_BASE}/ai/status</code>
-          </p>
-        </div>
-      `;
-    }
-  };
-  const closeRecommendModal = () => recommendModal.style.display = "none";
-  document.body.style.overflow = '';
-  const updateRecommendState = () => {
-    const teamSize = team.filter(Boolean).length;
-    // Habilitar el botó si hi ha almenys 1 Pokémon i menys de 6
-    recommendBtn.disabled = !(teamSize >= 1 && teamSize < 6);
-  };
-
-  /* ============================================================
-     🌀 CARRUSEL 3D
+     LÒGICA DEL CARRUSEL 3D
      ============================================================ */
   const rebuildCarousel = () => {
     const selected = team.filter(Boolean);
@@ -551,18 +314,345 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   /* ============================================================
-     🔗 EVENTS
+     HOLO STATS (LÒGICA D'ANÀLISI)
      ============================================================ */
+  async function updateHoloStats() {
+    const activeTeam = team.filter(Boolean);
+    
+    if (!powerEl || !domEl || !weakEl) return;
+
+    // Reset si està buit
+    if (activeTeam.length === 0) {
+      powerEl.textContent = "0";
+      domEl.textContent = "-";
+      weakEl.textContent = "-";
+      return;
+    }
+
+    // 1. Càlcul Local (Poder i Dominància)
+    let totalPower = 0;
+    const typeCounts = {};
+
+    activeTeam.forEach(p => {
+      if(p.stats) {
+        totalPower += (p.stats.hp + p.stats.attack + p.stats.defense + p.stats.special_attack + p.stats.special_defense + p.stats.speed);
+      }
+      p.types.forEach(t => { 
+        typeCounts[t] = (typeCounts[t] || 0) + 1; 
+      });
+    });
+
+    animateValue(powerEl, parseInt(powerEl.textContent) || 0, totalPower, 800);
+
+    let maxType = "-";
+    let maxCount = 0;
+    for (const [t, count] of Object.entries(typeCounts)) {
+      if (count > maxCount) { 
+        maxCount = count; 
+        maxType = t; 
+      }
+    }
+    
+    domEl.textContent = maxType.toUpperCase();
+    if (maxType !== "-") {
+        domEl.style.color = `rgb(${typeToRGB(maxType.toLowerCase())})`; 
+    } else {
+        domEl.style.color = "#fff";
+    }
+
+    // 2. Consulta al Backend (Vulnerabilitats)
+    weakEl.textContent = "..."; 
+    weakEl.style.color = "rgba(255,255,255,0.5)";
+
+    try {
+        const teamIds = activeTeam.map(p => p.pokedex_id);
+        
+        const response = await fetch(`${API_BASE}/ai/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ team_ids: teamIds })
+        });
+
+        if (!response.ok) throw new Error("Backend Error");
+
+        const data = await response.json();
+
+        if (data.success && data.analysis) {
+            const realWeakness = data.analysis.major_weakness || "NONE";
+            weakEl.textContent = realWeakness.toUpperCase();
+            weakEl.style.color = "#ff4d4d"; 
+        } else {
+            weakEl.textContent = "N/A";
+            weakEl.style.color = "#777";
+        }
+
+    } catch (error) {
+        console.error("Error connectant amb l'IA:", error);
+        weakEl.textContent = "ERR"; 
+        weakEl.style.color = "#ef4444"; 
+    }
+  }
+
+  function animateValue(obj, start, end, duration) {
+    if (start === end) return;
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      obj.innerHTML = Math.floor(progress * (end - start) + start);
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+    window.requestAnimationFrame(step);
+  }
+
+  /* ============================================================
+     GESTIÓ D'EQUIP
+     ============================================================ */
+  const removeFromTeam = idx => {
+    team[idx] = null;
+    renderTeamGrid();
+    refreshSearchList(); // Actualitza la llista per desbloquejar el Pokémon eliminat
+  };
+
+  const clearTeam = () => {
+    team = Array(6).fill(null);
+    renderTeamGrid();
+    refreshSearchList();
+  };
+
+  const fillRandomTeam = () => {
+    const emptySlots = team.map((v,i) => v ? null : i).filter(v => v !== null);
+    const selected = new Set(getSelectedNames());
+    // Filtrem els que ja tenim
+    const pool = mockPokemonData.filter(p => !selected.has(p.name.toLowerCase()));
+
+    // Algoritme de barreja (Fisher-Yates) parcial
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    emptySlots.forEach((slot, k) => {
+      if (pool[k]) team[slot] = pool[k];
+    });
+
+    renderTeamGrid();
+    refreshSearchList();
+  };
+
+  const getSelectedNames = () => team.filter(Boolean).map(p => p.name.toLowerCase());
+
+  /* ============================================================
+     GESTIÓ MODAL DE CERCA
+     ============================================================ */
+  const openSearch = index => {
+    editingIndex = index;
+    searchBar.value = "";
+    // Resetejar els filtres d'ordre visualment
+    if (sortStatEl) sortStatEl.value = "";
+    if (sortOrderEl) sortOrderEl.value = "desc";
+    
+    populateList(mockPokemonData);
+    searchModal.style.display = "block";
+    searchBar.focus();
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeSearch = () => {
+    searchModal.style.display = "none";
+    editingIndex = null;
+    document.body.style.overflow = '';
+  };
+
+  const refreshSearchList = async () => {
+    const query = (searchBar.value || "").toLowerCase().trim();
+    const selected = new Set(getSelectedNames());
+    let list = [];
+
+    if (query.length >= 2) {
+      list = await fetchPokemons(query);
+    } else {
+      list = mockPokemonData;
+    }
+
+    // Filtrem els que ja estan a l'equip
+    list = list.filter(p => !selected.has(p.name.toLowerCase()));
+    populateList(list);
+  };
+
+  const populateList = pokemons => {
+    pokemonListUl.innerHTML = "";
+    pokemons.forEach(pokemon => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <img src="${pokemon.sprite_url}" alt="${pokemon.name}" />
+        <span>${padId(pokemon.pokedex_id)} ${pokemon.name}</span>
+        <small>${pokemon.types.join(", ")}</small>
+      `;
+      li.addEventListener("click", () => {
+        if (editingIndex !== null) {
+          team[editingIndex] = pokemon;
+          renderTeamGrid();
+          closeSearch();
+        }
+      });
+      pokemonListUl.appendChild(li);
+    });
+  };
+
+  /* ============================================================
+     RECOMANACIÓ AMB IA (UI NOVA)
+     ============================================================ */
+  let currentRecommendation = null; 
+
+  const openRecommendModal = async () => {
+    const teamIds = team.filter(Boolean).map(p => p.pokedex_id);
+    
+    if (teamIds.length === 0) {
+      alert("Afegeix almenys un Pokémon a l'equip per obtenir recomanacions.");
+      return;
+    }
+
+    try {
+      // Estat de càrrega
+      recommendResults.style.display = "none";
+      recommendStatus.style.display = "block";
+      recommendStatus.innerHTML = "<p style='text-align: center; padding: 40px;'>🔮 Consultant l'Oracle Pokémon...</p>";
+      recommendModal.style.display = "block";
+      
+      const response = await fetch(`${API_BASE}/ai/recommend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_ids: teamIds })
+      });
+      
+      if (!response.ok) throw new Error("Error en la petició d'IA");
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.recommendations || data.recommendations.length === 0) {
+        recommendStatus.innerHTML = "<p style='text-align:center'>No s'han trobat recomanacions.</p>";
+        return;
+      }
+      
+      const topRec = data.recommendations[0];
+      currentRecommendation = topRec;
+
+      // Actualitzar UI del modal
+      recommendSprite.src = topRec.sprite_url;
+      document.getElementById("rec-name").textContent = topRec.name.toUpperCase();
+      document.getElementById("rec-id").textContent = padId(topRec.pokedex_id);
+      document.getElementById("rec-score").textContent = Math.round(topRec.score);
+
+      const typesContainer = document.getElementById("rec-types");
+      typesContainer.innerHTML = "";
+      topRec.types.forEach(t => {
+        const badge = document.createElement("span");
+        badge.className = "rec-pill";
+        badge.textContent = t;
+        const rgb = TYPE_RGB[t.toLowerCase()] || [100,100,100];
+        badge.style.backgroundColor = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.5)`;
+        badge.style.border = `1px solid rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.8)`;
+        typesContainer.appendChild(badge);
+      });
+
+      const reasoningList = document.getElementById("rec-reasoning");
+      reasoningList.innerHTML = topRec.reasoning.slice(0, 5).map(r => `<li>${r}</li>`).join('');
+
+      const warningsContainer = document.getElementById('rec-warnings-container');
+      const warningsList = document.getElementById('rec-warnings');
+      if (topRec.warnings && topRec.warnings.length > 0) {
+          warningsList.innerHTML = topRec.warnings.map(w => `<li>${w}</li>`).join('');
+          warningsContainer.style.display = 'block';
+      } else {
+          warningsContainer.style.display = 'none';
+      }
+
+      document.getElementById("bar-def").style.width = `${topRec.scores.defensive}%`;
+      document.getElementById("bar-off").style.width = `${topRec.scores.offensive}%`;
+      document.getElementById("bar-div").style.width = `${topRec.scores.diversity}%`;
+
+      // Botó Afegir
+      const actionContainer = document.getElementById("rec-action-container");
+      const acceptBtn = document.getElementById("accept-rec-btn");
+      const isTeamFull = teamIds.length >= 6;
+
+      if (isTeamFull) {
+        actionContainer.style.display = "none";
+      } else {
+        actionContainer.style.display = "block";
+        const newBtn = acceptBtn.cloneNode(true);
+        acceptBtn.parentNode.replaceChild(newBtn, acceptBtn);
+        newBtn.addEventListener("click", addRecommendationToTeam);
+      }
+
+      recommendStatus.style.display = "none";
+      recommendResults.style.display = "block";
+      
+    } catch (error) {
+      console.error("Error recomanació:", error);
+      recommendResults.style.display = "none";
+      recommendStatus.style.display = "block";
+      recommendStatus.innerHTML = `<p style='text-align: center; color:#ef4444'>Error: ${error.message}</p>`;
+    }
+  };
+
+  const addRecommendationToTeam = () => {
+    if (!currentRecommendation) return;
+    const emptyIndex = team.findIndex(slot => slot === null);
+    
+    if (emptyIndex !== -1) {
+        team[emptyIndex] = currentRecommendation;
+        renderTeamGrid();
+        closeRecommendModal();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const closeRecommendModal = () => recommendModal.style.display = "none";
+  const updateRecommendButtonState = () => {
+    const teamSize = team.filter(Boolean).length;
+    recommendBtn.disabled = !(teamSize >= 1 && teamSize < 6);
+  };
+
+  /* ============================================================
+     LISTENERS D'EVENTS
+     ============================================================ */
+  
+  // Tancar modals en fer clic fora
   document.querySelectorAll(".modal").forEach(modal => {
     modal.addEventListener("click", e => {
       if (e.target === modal) modal.style.display = "none";
     });
   });
 
+  // Events Cerca
   searchCloseBtn.addEventListener("click", closeSearch);
   searchBar.addEventListener("input", refreshSearchList);
+
+  // Events Ordenació
+  applySortBtn.addEventListener("click", async () => {
+    const stat = sortStatEl.value;
+    const order = sortOrderEl.value;
+
+    if (!stat) {
+      alert("Selecciona una estadística per ordenar.");
+      return;
+    }
+
+    pokemonListUl.innerHTML = '<li style="justify-content:center;">⏳ Carregant...</li>';
+    const sortedList = await fetchSortedPokemons(stat, order);
+    searchBar.value = ""; 
+    populateList(sortedList);
+  });
+
+  // Events Recomanació
   recommendBtn.addEventListener("click", openRecommendModal);
   recommendCloseBtn.addEventListener("click", closeRecommendModal);
+
+  // Events Accions
   randomBtn.addEventListener("click", fillRandomTeam);
   clearBtn.addEventListener("click", clearTeam);
   addBtn.addEventListener("click", () => {
@@ -571,8 +661,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   /* ============================================================
-     🚀 INICIALITZACIÓ
+     INICIALITZACIÓ
      ============================================================ */
   renderTeamGrid();
-  console.log("✅ PokeBuilder connectat i mostrant resultats reals de FastAPI!");
+  console.log("Aplicació inicialitzada.");
 });

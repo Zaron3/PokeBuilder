@@ -1,16 +1,15 @@
-/* ============================================================
-   🌙 MODE FOSC — PALETA I VARIABLES
-   ============================================================ */
+/* ==========================================================================
+   VARIABLES & THEME CONFIGURATION
+   ========================================================================== */
 :root {
+  /* Colors */
   --bg: #1b1c1f;
   --card: #242529;
   --ink: #f3f4f6;
   --muted: #9ca3af;
   --ring: #2f3136;
-
-  --shadow: 0 8px 20px rgba(0, 0, 0, .35);
-  --shadow-lg: 0 14px 28px rgba(0, 0, 0, .45);
-
+  
+  /* Accents */
   --primary: #3d3f43;
   --primary-hover: #4c4e52;
   --danger-bg: #4b1f1f;
@@ -18,149 +17,42 @@
   --outline-border: #4b5563;
   --outline-hover: #5b6470;
 
+  /* Shadows */
+  --shadow: 0 8px 20px rgba(0, 0, 0, .35);
+  --shadow-lg: 0 14px 28px rgba(0, 0, 0, .45);
+
+  /* Carousel Dimensions */
   --card-w: 120px;
   --card-h: 160px;
   --inner-rotateX: -12deg;
   --inner-perspective: 1100px;
 }
 
-/* ============================================================
-   🧱 BASE GLOBAL
-   ============================================================ */
+/* ==========================================================================
+   GLOBAL RESET & BASE STYLES
+   ========================================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-body {
+html, body {
   height: 100%;
+}
+
+body {
   background: var(--bg);
   color: var(--ink);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
 }
 
-html, body {
-  height: 100%;
- /* Evita el scroll vertical */
+/* Utility Classes */
+.hidden {
+  display: none !important;
 }
 
-
-/* ============================================================
-   💎 HEADER MODERN AMB BOTONS GLASS-STYLE
-   ============================================================ */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 26px;
-  background: rgba(30, 31, 34, 0.75);
-  backdrop-filter: blur(16px) saturate(1.4);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-/* Marca */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.brand-icon {
-  width: 34px;
-  height: 34px;
-  transition: transform 0.6s ease;
-}
-
-.brand-icon:hover {
-  transform: rotate(360deg);
-}
-
-.brand-name {
-  font-weight: 800;
-  font-size: 18px;
-  color: var(--ink);
-  letter-spacing: 0.3px;
-}
-
-/* Botons moderns tipus glass */
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.glass-btn {
-  position: relative;
-  border: none;
-  outline: none;
-  cursor: pointer;
-
-  font-weight: 600;
-  font-size: 14px;
-  padding: 10px 20px;
-
-  border-radius: 10px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  transition: all 0.3s ease;
-}
-
-.glass-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
-}
-
-/* Colors per tipus */
-.glass-btn.blue {
-  background: linear-gradient(135deg, rgba(37,99,235,0.35), rgba(96,165,250,0.25));
-  border: 1px solid rgba(59,130,246,0.5);
-}
-.glass-btn.blue:hover {
-  background: linear-gradient(135deg, rgba(37,99,235,0.45), rgba(96,165,250,0.35));
-  box-shadow: 0 0 12px rgba(59,130,246,0.4);
-}
-
-.glass-btn.gray {
-  background: linear-gradient(135deg, rgba(156,163,175,0.2), rgba(55,65,81,0.3));
-  border: 1px solid rgba(156,163,175,0.4);
-}
-.glass-btn.gray:hover {
-  background: linear-gradient(135deg, rgba(156,163,175,0.3), rgba(55,65,81,0.4));
-}
-
-.glass-btn.red {
-  background: linear-gradient(135deg, rgba(220,38,38,0.35), rgba(248,113,113,0.2));
-  border: 1px solid rgba(220,38,38,0.5);
-}
-.glass-btn.red:hover {
-  background: linear-gradient(135deg, rgba(220,38,38,0.5), rgba(248,113,113,0.3));
-  box-shadow: 0 0 12px rgba(220,38,38,0.45);
-}
-
-.glass-btn.outline {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.25);
-  color: var(--ink);
-}
-.glass-btn.outline:hover {
-  background: rgba(255,255,255,0.05);
-}
-
-/* Efecte “glow ring” quan fas focus (accessibilitat) */
-.glass-btn:focus {
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 0 0 4px rgba(59,130,246,0.25);
-}
-
-
-/* ============================================================
-   🧩 ESTRUCTURA GENERAL
-   ============================================================ */
 .container {
   max-width: 1100px;
   margin: 0 auto;
@@ -178,9 +70,48 @@ html, body {
   color: var(--muted);
 }
 
-/* ============================================================
-   🧱 GRILLA D’EQUIP
-   ============================================================ */
+/* ==========================================================================
+   HEADER COMPONENT
+   ========================================================================== */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 26px;
+  background: rgba(30, 31, 34, 0.75);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 30px;
+  height: 30px;
+  transition: transform 0.6s ease;
+}
+
+.brand-icon:hover {
+  transform: rotate(360deg);
+}
+
+.brand-name {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  letter-spacing: 0.3px;
+}
+
+/* ==========================================================================
+   MAIN TEAM GRID
+   ========================================================================== */
 .team-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));
@@ -193,24 +124,20 @@ html, body {
   }
 }
 
-/* Targeta buida */
+/* Empty State Card */
 .add-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   height: 220px;
   border-radius: 16px;
-
   border: 1px solid var(--ring);
   background: var(--card);
   color: var(--muted);
-
   font-weight: 700;
   box-shadow: var(--shadow);
   cursor: pointer;
-
   transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
 
@@ -220,14 +147,19 @@ html, body {
   border-color: #5b6470;
 }
 
-/* ============================================================
-   🃏 TARGETES (flip)
-   ============================================================ */
+/* ==========================================================================
+   FLIP CARD COMPONENT (POKEMON CARD)
+   ========================================================================== */
 .poke-card {
   perspective: 1000px;
   height: 220px;
   position: relative;
-  transition: transform 0.2s ease-out; /* <-- AFEGEIX AQUESTA LÍNIA */
+  transition: transform 0.2s ease-out;
+}
+
+.poke-card:hover {
+  transform: scale(1.03);
+  z-index: 5;
 }
 
 .card-inner {
@@ -238,7 +170,9 @@ html, body {
   transition: transform .35s ease;
 }
 
-
+.poke-card:hover .card-inner {
+  transform: rotateY(180deg);
+}
 
 .card-face {
   position: absolute;
@@ -251,80 +185,7 @@ html, body {
   box-shadow: var(--shadow);
 }
 
-/* Efecte d'escala al passar el ratolí */
-.poke-card:hover {
-  transform: scale(1.03); /* La fa un 3% més gran */
-  z-index: 5; /* Assegura que es posi per sobre de les altres */
-}
-
-/* ============================================================
-   🌟 DARRERE DE LA TARGETA ("Clica per eliminar")
-   ============================================================ */
-.card-back .back-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-
-  height: 100%;
-  padding: 0 10px;
-
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
-
-  border-radius: 16px;
-  position: relative;
-  overflow: hidden;
-
-  /* Fons elegant amb efecte de gradient suau */
-  background: linear-gradient(
-      145deg,
-      rgba(var(--type-rgb), 0.25) 0%,
-      rgba(var(--type-rgb), 0.15) 40%,
-      rgba(var(--type-rgb), 0.05) 100%
-    ),
-    var(--card);
-
-  box-shadow: inset 0 0 10px rgba(var(--type-rgb), 0.25);
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
-}
-
-/* ✨ Efecte de reflexe en moviment (shimmer suau) */
-.card-back .back-body::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    120deg,
-    rgba(255, 255, 255, 0) 40%,
-    rgba(255, 255, 255, 0.25) 50%,
-    rgba(255, 255, 255, 0) 60%
-  );
-  transform: skewX(-20deg);
-  animation: shimmer 3.5s infinite linear;
-  opacity: 0.6;
-}
-
-@keyframes shimmer {
-  from {
-    transform: translateX(-100%) skewX(-20deg);
-  }
-  to {
-    transform: translateX(100%) skewX(-20deg);
-  }
-}
-
-/* Petita animació quan passa el ratolí per sobre */
-.poke-card:hover .back-body {
-  transform: scale(1.03);
-  filter: brightness(1.15);
-}
-
-
-/* Capçalera de targeta */
+/* --- Front Face Styles --- */
 .card-head {
   position: relative;
   height: 110px;
@@ -346,7 +207,6 @@ html, body {
   filter: drop-shadow(0 10px 12px rgba(15, 23, 42, .18));
 }
 
-/* Cos de targeta */
 .card-body {
   padding: 12px;
   display: flex;
@@ -372,6 +232,12 @@ html, body {
   font-size: 12px;
 }
 
+.type-pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .type-pill {
   align-self: flex-start;
   padding: 4px 8px;
@@ -383,22 +249,131 @@ html, body {
   border: 1px solid rgba(var(--type-rgb), .55);
 }
 
-/* ============================================================
-   🌀 CARRUSEL 3D
-   ============================================================ */
+/* --- Back Face Styles --- */
+.card-back {
+  transform: rotateY(180deg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  
+  /* Dynamic gradient background based on type */
+  background: 
+    linear-gradient(
+      145deg, 
+      rgba(var(--type-rgb), 0.20) 0%,   
+      rgba(var(--type-rgb), 0.05) 45%,  
+      transparent 100%                  
+    ),
+    var(--card);
+  
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+}
+
+/* Back Actions (Edit/Delete) */
+.card-actions-back {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+}
+
+.card-actions-back .action-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.card-actions-back .action-btn:hover {
+  transform: translateY(-2px);
+  color: #fff;
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.card-actions-back .action-btn.remove:hover {
+  background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.4));
+  border-color: rgba(239,68,68,0.5);
+}
+
+.card-actions-back .action-btn.edit:hover {
+  background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(59,130,246,0.4));
+  border-color: rgba(59,130,246,0.5);
+}
+
+/* Back Stats Bars */
+.stats-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stat-row-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.stat-label {
+  width: 28px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+.stat-bar-track {
+  flex-grow: 1;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  box-shadow: 0 0 8px rgba(var(--type-rgb), 0.4);
+}
+
+.stat-val {
+  width: 24px;
+  text-align: right;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   3D CAROUSEL COMPONENT
+   ========================================================================== */
 .carousel-area {
   margin-top: 40px;
 }
 
 .wrapper {
   width: 100%;
-  height: 840px;
+  height: 440px;
   position: relative;
-
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .inner {
@@ -409,7 +384,7 @@ html, body {
   --perspective: var(--inner-perspective);
 
   position: absolute;
-  top: 12%;
+  top: 20%;
   left: calc(50% - (var(--w)/2) - 2.5px);
   transform: translateY(-48%);
 
@@ -435,7 +410,6 @@ html, body {
   border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
-
   transform: rotateY(calc((360deg / var(--quantity)) * var(--index))) translateZ(var(--translateZ));
   border: 2px solid rgba(var(--color-card), .95);
   box-shadow: 0 8px 22px rgba(var(--color-card), .35);
@@ -465,9 +439,97 @@ html, body {
   filter: drop-shadow(0 6px 6px rgba(0, 0, 0, .25));
 }
 
-/* ============================================================
-   🪟 MODALS
-   ============================================================ */
+/* ==========================================================================
+   HOLO STATS COMPONENT
+   ========================================================================== */
+.holo-stats-container {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-top: 60px;
+  padding: 0 20px 60px;
+  flex-wrap: wrap;
+}
+
+.holo-card {
+  position: relative;
+  width: 280px;
+  height: 160px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  display: flex;
+  align-items: center;
+  padding: 24px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: default;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.holo-card:hover {
+  transform: translateY(-10px);
+}
+
+.holo-icon {
+  font-size: 60px;
+  opacity: 0.1;
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  transform: rotate(-15deg);
+  transition: all 0.5s ease;
+}
+
+.holo-card:hover .holo-icon {
+  opacity: 0.3;
+  transform: rotate(0deg) scale(1.2);
+}
+
+.holo-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.holo-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 5px;
+}
+
+.holo-content h2 {
+  font-size: 36px;
+  font-weight: 900;
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(255,255,255,0.5);
+}
+
+/* Holo Variants */
+.holo-card.blue:hover { box-shadow: 0 0 30px rgba(59, 130, 246, 0.4); border-color: rgba(59, 130, 246, 0.5); }
+.holo-card.blue .holo-bg {
+  position: absolute; width: 150px; height: 150px; background: #3b82f6; filter: blur(80px); opacity: 0.2; top: -50px; left: -50px;
+}
+
+.holo-card.purple:hover { box-shadow: 0 0 30px rgba(168, 85, 247, 0.4); border-color: rgba(168, 85, 247, 0.5); }
+.holo-card.purple .holo-bg {
+  position: absolute; width: 150px; height: 150px; background: #a855f7; filter: blur(80px); opacity: 0.2; top: -50px; left: -50px;
+}
+
+.holo-card.red:hover { box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.5); }
+.holo-card.red .holo-bg {
+  position: absolute; width: 150px; height: 150px; background: #ef4444; filter: blur(80px); opacity: 0.2; top: -50px; left: -50px;
+}
+
+/* ==========================================================================
+   MODALS (GENERAL & SEARCH)
+   ========================================================================== */
 .modal {
   display: none;
   position: fixed;
@@ -504,7 +566,7 @@ html, body {
   cursor: pointer;
 }
 
-/* Input de cerca */
+/* Search Controls (Input & Sort) */
 #search-bar {
   width: 100%;
   margin: 8px 0 14px;
@@ -516,15 +578,53 @@ html, body {
   color: var(--ink);
 }
 
-/* Llista Pokémon */
+.sort-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.sort-select {
+  flex: 1;
+  padding: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--ring);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+}
+
+.sort-select:hover {
+  border-color: #5b6470;
+}
+
+.sort-select:focus {
+  border-color: #3b82f6;
+}
+
+/* Pokemon List */
 #pokemon-list {
   list-style: none;
   margin: 0;
   padding: 0;
   max-height: 340px;
-  overflow: auto;
+  overflow-y: auto;
   border: 1px solid var(--ring);
   border-radius: 12px;
+  scrollbar-width: none; /* Firefox */
+}
+
+#pokemon-list::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 #pokemon-list li {
@@ -547,150 +647,582 @@ html, body {
   height: 42px;
   image-rendering: pixelated;
 }
-#pokemon-list::-webkit-scrollbar {
-  display: none;                 /* amaga barra a Chrome/Edge/Safari */
+
+/* ==========================================================================
+   RECOMMENDATION MODAL (AI UI)
+   ========================================================================== */
+.modal-content.glass-panel {
+  background: rgba(30, 31, 35, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border-radius: 24px;
+  padding: 0;
+  overflow: hidden;
+  max-width: 650px;
+  width: 95vw;
 }
 
-/* Amagar la barra de scroll però mantenir el desplaçament */
-#pokemon-list {
-  overflow-y: auto;              /* es pot fer scroll si cal */
-  scrollbar-width: none;         /* amaga barra a Firefox */
-}
-
-
-
-
-/* ============================================================
-   ⚙️ UTILITATS
-   ============================================================ */
-.hidden {
-  display: none !important;
-}
-
-/* ============================================================
-   ✏️ BOTONS D'ACCIÓ SOBRE LA TARGETA (EDITAR/ELIMINAR)
-   ============================================================ */
-.card-actions {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: calc(100% - 16px);
-  justify-content: space-between;
-  z-index: 1; /* Assegura que estiguin per sobre d'altres elements */
+.rec-header {
   display: flex;
-  gap: 0;
-  opacity: 1; /* Inicialment ocults */
-  pointer-events: all; /* No respondran a events quan són ocults */
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-  transform: translateY(0); /* Petita animació en aparèixer */
+  align-items: center;
+  gap: 20px;
+  padding: 30px 30px 20px;
+  background: linear-gradient(to bottom, #2a2b30, #1b1c1f);
+  position: relative;
 }
 
-.action-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%; /* Circular */
+.rec-visual {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+#recommend-sprite {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.2));
+  transform: scale(1.4);
+}
+
+.rec-score-badge {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  background: #10b981;
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  border: 3px solid #1b1c1f;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.rec-score-badge small { 
+  font-size: 8px; 
+  opacity: 0.8; 
+}
+
+.rec-info h2 {
+  font-size: 28px;
+  margin: 0;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.rec-info p {
+  color: #6b7280;
+  font-weight: 700;
+  margin: 2px 0 8px;
+}
+
+.type-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rec-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 0;
+}
+
+.rec-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 30px;
+  padding: 25px 30px;
+}
+
+@media (max-width: 600px) {
+  .rec-grid { 
+    grid-template-columns: 1fr; 
+    gap: 20px; 
+  }
+}
+
+.rec-subtitle {
+  color: #9ca3af;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.rec-subtitle.warning { 
+  color: #ef4444; 
+  margin-top: 15px; 
+}
+
+/* Rec Lists */
+.rec-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rec-list li {
+  position: relative;
+  padding-left: 18px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #e5e7eb;
+  line-height: 1.4;
+}
+
+.rec-list.pros li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #10b981;
+  font-weight: bold;
+}
+
+.rec-list.cons li::before {
+  content: "!";
+  position: absolute;
+  left: 0;
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Stat Bars (Rec Modal) */
+.stat-row {
+  margin-bottom: 12px;
+}
+
+.stat-row span {
+  display: block;
+  font-size: 12px;
+  color: #d1d5db;
+  margin-bottom: 4px;
+}
+
+.progress-bar {
+  height: 6px;
+  background: #374151;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar div {
+  height: 100%;
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  border-radius: 10px;
+  transition: width 1s ease;
+}
+
+/* Action Area (Rec Modal) */
+.rec-action-area {
+  padding: 0 30px 30px;
+  text-align: center;
+}
+
+.glow-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  cursor: pointer;
-  border: none;
-  color: var(--ink); /* Text blanc */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); /* Petita ombra */
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  gap: 8px;
 }
 
-.action-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+.glow-btn::before {
+  content: "+";
+  font-size: 20px;
 }
 
-/* Estils específics per al botó d'eliminar (Creu - Vermell) */
-.action-btn.remove {
-  background-color: #ef4444; /* Vermell fort */
-  order: -1; /* Força que el botó de remove es posicioni a l'esquerra */
+.glow-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
 }
 
-.action-btn.remove:hover {
-  background-color: #dc2626; /* Vermell més fosc al hover */
+.glow-btn:active {
+  transform: scale(0.98);
 }
 
-/* Estils específics per al botó d'editar (Llapis - Blau) */
-.action-btn.edit {
-  background-color: #3b82f6; /* Blau fort */
-}
-
-.action-btn.edit:hover {
-  background-color: #2563eb; /* Blau més fosc al hover */
-}
-
-/* Icones (ara són SVGs o IMGs) */
-.action-btn .icon {
-  /* Mida per l'SVG de la creu (si encara el fas servir) */
-  width: 18px;
-  height: 18px;
-}
-
-.action-btn .action-icon-img {
-  /* Mida per al teu PNG */
-  width: 16px; /* Ajusta-ho a la mida que vulguis */
-  height: 16px; /* Ajusta-ho a la mida que vulguis */
-  /* Si el teu llapis no és blanc, potser necessites: */
-  /* filter: invert(1); <-- (Per fer-lo blanc) */
-}
-
-.type-pill-container {
-  display: flex; /* Posa les píndoles en fila */
-  flex-wrap: wrap; /* Per si un Pokémon tingués més tipus */
-  gap: 6px; /* Espai entre les píndoles */
-}
-
-.poke-card:hover .card-inner {
-  transform: rotateY(180deg); /* <--- TORNA A GIRAR */
-}
-
-/* NOU: Estils pel revers de la targeta */
-.card-back {
-  transform: rotateY(180deg); /* Fa que estigui del revés inicialment */
-  padding: 12px;
+/* ==========================================================================
+   FLOATING MENU (FAB)
+   ========================================================================== */
+.floating-menu {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  z-index: 100;
 }
 
-.stats-title {
+.fab-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(40, 41, 45, 0.9);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.fab-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.fab-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.fab-btn:hover svg {
+  transform: rotate(10deg);
+}
+
+.fab-btn:active {
+  transform: scale(0.95);
+}
+
+/* FAB Colors */
+.fab-btn.blue {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.fab-btn.blue:disabled {
+  background: #374151;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.fab-btn.gray {
+  background: #4b5563;
+}
+
+.fab-btn.outline {
+  background: #f3f4f6;
+  color: #1f2937;
+  border: 2px solid #e5e7eb;
+}
+
+.fab-btn.red {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+/* ==========================================================================
+   EDIT PAGE SPECIFIC STYLES
+   ========================================================================== */
+body.edit-mode {
+  margin: 0;
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: #0f1014;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%), 
+    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+  background-attachment: fixed;
+  background-size: cover;
+  background-repeat: no-repeat;
+  font-family: 'Inter', sans-serif;
+  overflow-y: auto; 
+  overflow-x: hidden;
+}
+
+.edit-container {
+  width: 100%;
+  max-width: 900px;
+  margin: auto; 
+  padding: 20px;
+  position: relative;
+  z-index: 10;
+}
+
+/* Ambient Lights */
+.ambient-light {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: -1;
+  opacity: 0.6;
+}
+
+.ambient-light.one {
+  width: 400px;
+  height: 400px;
+  background: #4f46e5;
+  top: -100px;
+  left: -100px;
+}
+
+.ambient-light.two {
+  width: 500px;
+  height: 500px;
+  background: #db2777;
+  bottom: -150px;
+  right: -150px;
+}
+
+/* Glass Card Container */
+.glass-card {
+  background: rgba(30, 31, 40, 0.65);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Edit Header */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.sprite-container {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sprite-glow {
+  position: absolute;
+  inset: 10px;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+  filter: blur(15px);
+  z-index: 0;
+}
+
+#edit-sprite {
+  position: relative;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+
+#edit-sprite:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.pokemon-identity h1 {
+  font-size: 42px;
+  font-weight: 900;
+  margin: 0;
+  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 12px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
+
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 15px;
+}
+
+.separator {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  margin: 30px 0;
+}
+
+/* Edit UI Buttons */
+.ui-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
   font-weight: 700;
   font-size: 14px;
-  color: var(--muted);
-  text-align: center;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--ring);
-  padding-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-family: inherit;
 }
 
-.stats-list {
-  list-style: none;
-  width: 100%;
-  padding: 0 4px; /* Una mica d'espai als costats */
-}
-
-.stats-list li {
-  display: flex;
-  justify-content: space-between; /* Nom a l'esquerra, valor a la dreta */
-  align-items: center;
+.ui-btn.small {
+  padding: 10px 16px;
   font-size: 13px;
-  padding: 3px 0; /* Espaiat entre línies */
+  white-space: nowrap;
 }
 
-.stat-name {
-  font-weight: 600;
-  color: var(--muted);
+.ui-btn.primary {
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  color: white;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
 }
 
-.stat-value {
+.ui-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+}
+
+.ui-btn.ghost {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.ui-btn.ghost:hover {
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  border-color: rgba(255,255,255,0.3);
+}
+
+/* Edit Forms & Inputs */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+}
+
+@media(max-width: 800px) { 
+  .form-grid { 
+    grid-template-columns: 1fr; 
+    gap: 30px; 
+  } 
+}
+
+.section-label {
+  color: #cbd5e1;
+  font-size: 18px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   font-weight: 800;
-  color: var(--ink);
-  min-width: 25px; /* Alineació correcta dels números */
-  text-align: right;
 }
 
+.section-label .icon { 
+  filter: grayscale(1); 
+  opacity: 0.7; 
+}
 
+.inputs-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.input-box label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.select-wrapper, .input-wrapper {
+  position: relative;
+}
+
+.select-wrapper::after {
+  content: '▼';
+  font-size: 10px;
+  color: #64748b;
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+select, input {
+  width: 100%;
+  padding: 14px 16px;
+  background: #15161b;
+  border: 1px solid #2d2e35;
+  border-radius: 12px;
+  color: #e2e8f0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+select:hover, input:hover {
+  border-color: #475569;
+  background: #1a1b21;
+}
+
+select:focus, input:focus {
+  border-color: #6366f1;
+  background: #1e1f26;
+  box-shadow: 
+    0 0 0 4px rgba(99, 102, 241, 0.15),
+    inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+option {
+  background: #15161b;
+  color: #fff;
+}
