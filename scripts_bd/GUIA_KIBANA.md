@@ -82,6 +82,11 @@ GET /items/_count
 GET /abilities/_count
 ```
 
+**Naturalezas:**
+```json
+GET /natures/_count
+```
+
 **Equips:**
 ```json
 GET /teams/_count
@@ -634,6 +639,121 @@ GET /abilities/_search
   "size": 20
 }
 ```
+
+---
+
+## 🌟 Consultes de Naturalezas (Natures)
+
+### Obtenir totes les naturalezas
+
+```json
+GET /natures/_search
+{
+  "size": 30
+}
+```
+
+### Buscar una naturalesa per nom
+
+```json
+GET /natures/_search
+{
+  "query": {
+    "term": {
+      "name.keyword": "adamant"
+    }
+  }
+}
+```
+
+### Buscar naturalezas que augmenten un stat específic
+
+Exemple: Naturalezas que augmenten l'atac:
+
+```json
+GET /natures/_search
+{
+  "query": {
+    "term": {
+      "increased_stat": "attack"
+    }
+  }
+}
+```
+
+### Buscar naturalezas que disminueixen un stat específic
+
+Exemple: Naturalezas que disminueixen l'atac especial:
+
+```json
+GET /natures/_search
+{
+  "query": {
+    "term": {
+      "decreased_stat": "special-attack"
+    }
+  }
+}
+```
+
+### Buscar naturalezas neutres (sense canvis)
+
+```json
+GET /natures/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        { "term": { "increased_stat": null } },
+        { "term": { "decreased_stat": null } }
+      ]
+    }
+  }
+}
+```
+
+O més simple, buscar per nom "serious" (que és neutra):
+
+```json
+GET /natures/_search
+{
+  "query": {
+    "term": {
+      "name.keyword": "serious"
+    }
+  }
+}
+```
+
+### Veure només camps específics de naturalezas
+
+```json
+GET /natures/_search
+{
+  "_source": ["nature_id", "name", "increased_stat", "decreased_stat"],
+  "size": 30
+}
+```
+
+### Exemple: Buscar naturalesa "Jolly"
+
+```json
+GET /natures/_search
+{
+  "query": {
+    "term": {
+      "name.keyword": "jolly"
+    }
+  }
+}
+```
+
+Això retornarà:
+- `name`: "jolly"
+- `increased_stat`: "speed"
+- `decreased_stat`: "special-attack"
+- `likes_flavor`: "spicy"
+- `hates_flavor`: "dry"
 
 ---
 
