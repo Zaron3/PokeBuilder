@@ -8,6 +8,9 @@ DELETE /pokemon?ignore_unavailable=true
 DELETE /moves?ignore_unavailable=true
 DELETE /teams?ignore_unavailable=true
 DELETE /types?ignore_unavailable=true
+DELETE /items?ignore_unavailable=true
+DELETE /abilities?ignore_unavailable=true
+DELETE /natures?ignore_unavailable=true
 
 // 2. CREEM L'ÍNDEX `pokemon`
 PUT /pokemon
@@ -45,6 +48,8 @@ PUT /pokemon
 "name": { "type": "keyword" },
 "learn_method": { "type": "keyword" }
 }
+},
+"is_banned": { "type": "boolean" }
 }
 }
 }
@@ -130,6 +135,66 @@ PUT /types
 "double_damage_to": { "type": "keyword" },
 "half_damage_to": { "type": "keyword" },
 "no_damage_to": { "type": "keyword" }
+}
+}
+}
+
+// 6. CREEM L'ÍNDEX `items` (Objectes/Items de Pokémon)
+PUT /items
+{
+"mappings": {
+"properties": {
+"item_id": { "type": "integer" },
+"name": {
+"type": "text",
+"fields": {
+"keyword": { "type": "keyword" }
+}
+},
+"category": { "type": "keyword" },
+"cost": { "type": "integer" },
+"description": { "type": "text" },
+"effect": { "type": "text" },
+"attributes": { "type": "keyword" }
+}
+}
+}
+
+// 7. CREEM L'ÍNDEX `abilities` (Habilitats de Pokémon)
+PUT /abilities
+{
+"mappings": {
+"properties": {
+"ability_id": { "type": "integer" },
+"name": {
+"type": "text",
+"fields": {
+"keyword": { "type": "keyword" }
+}
+},
+"description": { "type": "text" },
+"effect": { "type": "text" },
+"generation": { "type": "keyword" }
+}
+}
+}
+
+// 8. CREEM L'ÍNDEX `natures` (Naturalezas de Pokémon)
+PUT /natures
+{
+"mappings": {
+"properties": {
+"nature_id": { "type": "integer" },
+"name": {
+"type": "text",
+"fields": {
+"keyword": { "type": "keyword" }
+}
+},
+"increased_stat": { "type": "keyword" },
+"decreased_stat": { "type": "keyword" },
+"likes_flavor": { "type": "keyword" },
+"hates_flavor": { "type": "keyword" }
 }
 }
 }

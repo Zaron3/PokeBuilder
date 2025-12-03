@@ -57,15 +57,42 @@ def importar_pokemons():
                 stat_name = s["stat"]["name"].replace("-", "_") 
                 stats_pokemon[stat_name] = s["base_stat"]
             
+            # Creem la llista d'habilitats (nested structure)
+            abilities_pokemon = []
+            for ability in data.get("abilities", []):
+                abilities_pokemon.append({
+                    "name": ability["ability"]["name"],
+                    "is_hidden": ability.get("is_hidden", False)
+                })
+            
+            # Creem la llista de moviments disponibles (moves_pool)
+            # PokéAPI retorna molts moviments amb diferents mètodes d'aprenentatge
+            moves_pool_pokemon = []
+            for move_entry in data.get("moves", []):
+                move_name = move_entry["move"]["name"]
+                # Agafem el primer mètode d'aprenentatge (normalment hi ha un principal)
+                # Per simplificar, agafem el primer "version_group_details"
+                learn_method = None
+                if move_entry.get("version_group_details"):
+                    # Agafem el mètode del primer grup de versions
+                    learn_method = move_entry["version_group_details"][0]["move_learn_method"]["name"]
+                
+                if learn_method:
+                    moves_pool_pokemon.append({
+                        "name": move_name,
+                        "learn_method": learn_method
+                    })
+            
             # Creem el document final que inserirem
+            # Nota: is_banned per defecte és false. Es pot actualitzar després amb un script específic
             nostre_pokemon = {
                 "pokedex_id": data["id"],
                 "name": data["name"],
                 "types": tipus_pokemon,
-                "stats": stats_pokemon
-                # NOTA: Aquí faltarien camps com 'abilities' o 'moves_pool'
-                # que hauríeu d'afegir seguint la mateixa lògica de transformació
-                # si els heu definit al vostre mapping.
+                "stats": stats_pokemon,
+                "abilities": abilities_pokemon,
+                "moves_pool": moves_pool_pokemon,
+                "is_banned": False  # Per defecte no està prohibit. Es pot actualitzar després
             }
 
             # ==========================================================
@@ -105,3 +132,4 @@ def importar_pokemons():
 # --- Punt d'entrada per executar l'script ---
 if __name__ == "__main__":
     importar_pokemons()
+
