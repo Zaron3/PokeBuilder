@@ -1226,3 +1226,502 @@ option {
   background: #15161b;
   color: #fff;
 }
+
+/* ==========================================================================
+   EDITOR NAVIGATION CARDS (PREV / NEXT)
+   ========================================================================== */
+.editor-layout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    /* Assegura que l'alçada sigui suficient però permeti scroll si la pantalla és petita */
+    min-height: 100vh;
+    gap: 40px;
+    padding: 20px;
+}
+
+.nav-card {
+    width: 160px;
+    height: 220px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    backdrop-filter: blur(10px);
+    opacity: 0.4;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-card:hover {
+    opacity: 1;
+    transform: scale(1.05) translateY(-5px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.nav-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.nav-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+
+.nav-sprite {
+    width: 90px;
+    height: 90px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6));
+    transition: transform 0.3s ease;
+}
+
+.nav-card:hover .nav-sprite {
+    transform: scale(1.15) rotate(5deg);
+}
+
+.nav-name {
+    font-weight: 800;
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    padding: 0 10px;
+}
+
+/* Amagar els laterals si no hi ha Pokémon */
+.nav-card.hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+/* Responsivitat: Amagar laterals en pantalles petites */
+@media (max-width: 1200px) {
+    .editor-layout {
+        flex-direction: column;
+        gap: 20px;
+    }
+    .nav-card {
+        display: none; /* Simplifiquem la UI en mòbil */
+    }
+}
+
+/* --- HEADER AMB ESPAI --- */
+.header {
+    /* Assegura't que té això per separar els costats */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* ... la resta del teu estil de header ... */
+}
+
+/* --- BOTÓ D'USUARI --- */
+.user-actions {
+    display: flex;
+    align-items: center;
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--ink); /* El teu color de text clar */
+    padding: 8px 16px;
+    border-radius: 50px; /* Forma de píndola arrodonida */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.icon-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Quan l'usuari està loguejat, canviem l'estil */
+.icon-btn.logged-in {
+    background: linear-gradient(135deg, #3b82f6, #2563eb); /* Blau */
+    border-color: transparent;
+    color: white;
+}
+
+/* --- ESTILS DEL MODAL DE LOGIN (Petit i bonic) --- */
+.modal-content.small {
+    max-width: 380px;
+    text-align: center;
+}
+
+.auth-header h2 {
+    margin-bottom: 5px;
+    color: #fff;
+}
+.auth-header p {
+    color: #9ca3af;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    text-align: left;
+}
+
+.input-group label {
+    font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #9ca3af;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #374151;
+    border-radius: 8px;
+    color: white;
+    outline: none;
+}
+
+.input-group input:focus {
+    border-color: #3b82f6;
+}
+
+.ui-btn.full {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #3b82f6;
+    color: white;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+
+.auth-footer {
+    margin-top: 20px;
+    font-size: 13px;
+    color: #6b7280;
+}
+.auth-footer a {
+    color: #60a5fa;
+    text-decoration: none;
+}
+/* Botó Vermell per a Logout */
+.ui-btn.primary.red {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.ui-btn.primary.red:hover {
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+    transform: translateY(-2px);
+}
+
+/* Espai extra al final del modal de Logout per a què els botons respirin */
+#logout-modal .modal-content {
+    /* Augmentem l'espai inferior */
+    padding: 10px;
+}
+
+/* --- MODAL DE PERFIL --- */
+.modal-content.medium {
+    max-width: 600px; /* Més ample que el de login */
+    padding: 30px;
+}
+
+/* Capçalera amb Avatar */
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-right: 30px; /* Espai per la X de tancar */
+}
+
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.profile-avatar {
+    width: 60px;
+    height: 60px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+#profile-username {
+    font-size: 24px;
+    margin: 0;
+    color: white;
+}
+
+/* Botó petit vermell */
+.ui-btn.red-text {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.3);
+}
+.ui-btn.red-text:hover {
+    background: rgba(248, 113, 113, 0.1);
+    color: #ef4444;
+}
+
+/* --- ESTAT BUIT (Empty State) --- */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 16px;
+    border: 1px dashed var(--ring);
+    color: var(--muted);
+}
+
+.empty-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+    display: block;
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+    font-size: 15px;
+}
+
+/* --- CAPÇALERA DE L'EQUIP --- */
+.team-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 10px;
+}
+
+/* Input del Nom (Estil Títol) */
+.team-name-input-wrapper {
+    position: relative;
+    flex-grow: 1;
+    max-width: 500px;
+}
+
+.team-name-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--ink); /* El teu color de text clar */
+    font-size: 28px; /* Gran com un títol */
+    font-weight: 800;
+    padding: 5px 0;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.team-name-input:hover,
+.team-name-input:focus {
+    border-bottom-color: var(--muted); /* Una línia subtil al fer focus */
+    background: rgba(255,255,255,0.02);
+}
+
+.team-name-input::placeholder {
+    color: var(--muted);
+    opacity: 0.5;
+}
+
+/* Icona de llapis petita al costat */
+.team-name-input-wrapper .edit-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--muted);
+    pointer-events: none; /* No interfereix amb el clic */
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.team-name-input-wrapper:hover .edit-icon {
+    opacity: 1; /* Només es veu quan passes el ratolí */
+}
+
+/* Botó de Guardar */
+#save-team-btn {
+    padding: 10px 24px;
+    font-size: 16px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(135deg, #10b981, #059669); /* Verd (Èxit) */
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    transition: all 0.2s ease;
+}
+
+#save-team-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+#save-team-btn:active {
+    transform: scale(0.98);
+}
+/* ============================================================
+   DATA GRID (TAULA AVANÇADA)
+   ============================================================ */
+
+/* Fem el modal més ample per encabir la taula */
+.modal-content.large {
+    width: 95vw;
+    max-width: 1100px;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 25px;
+}
+
+/* Contenidor amb scroll */
+.datagrid-container {
+    flex-grow: 1;
+    overflow: auto;
+    border: 1px solid var(--ring);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.pokemon-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 800px; /* Evita que es trenqui en pantalles molt petites */
+}
+
+/* Capçalera enganxosa (Sticky) */
+.pokemon-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #2a2b30;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+.pokemon-table th {
+    padding: 10px 8px;
+    text-align: left;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--ring);
+    white-space: nowrap;
+}
+
+/* Inputs de filtre */
+.filter-row th {
+    padding: 4px 8px 10px;
+    background: #232428;
+}
+
+.table-input {
+    width: 100%;
+    padding: 6px;
+    background: #15161b;
+    border: 1px solid var(--ring);
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+}
+.table-input:focus {
+    border-color: #3b82f6;
+    outline: none;
+}
+
+/* Columnes ordenables */
+.sortable {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.sortable:hover {
+    color: white;
+    background: rgba(255,255,255,0.05);
+}
+
+/* Cos de la taula */
+.pokemon-table tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background 0.1s;
+}
+.pokemon-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.pokemon-table td {
+    padding: 6px 8px;
+    color: var(--ink);
+    vertical-align: middle;
+}
+
+/* Estils de columnes */
+.col-img img { width: 32px; height: 32px; image-rendering: pixelated; }
+.col-stat { text-align: center; width: 50px; font-family: monospace; color: #d1d5db; }
+.col-action { text-align: center; }
+
+/* Botó d'afegir (+) */
+.add-row-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.add-row-btn:hover { background: #059669; transform: scale(1.1); }
+
+.table-footer {
+    padding-top: 10px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
+}

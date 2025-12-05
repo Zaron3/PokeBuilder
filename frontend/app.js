@@ -14,11 +14,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   /* ============================================================
      FUNCIONS DE DADES (API)
      ============================================================ */
-  
+
   // Cerca bàsica per prefix
   async function fetchPokemons(query) {
     try {
-      const res = await fetch(`${API_BASE}/pokemon/search?q=${query}`);
+        const res = await fetch(`${API_BASE}/pokemon/search?q=${query}&limit=1000`);
       if (!res.ok) throw new Error("Error de connexió amb l'API");
       return await res.json();
     } catch (err) {
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
      UTILITATS I CONSTANTS
      ============================================================ */
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  
+
   const getSpriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
   const padId = n => `#${String(n).padStart(3, "0")}`;
 
@@ -86,13 +86,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${arr[0]}, ${arr[1]}, ${arr[2]}`;
   };
 
+    // Funció per esperar que l'usuari acabi d'escriure abans de disparar l'acció
+    const debounce = (func, delay) => {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                func.apply(null, args);
+            }, delay);
+        };
+    };
+
   /* ============================================================
      ESTAT GLOBAL
      ============================================================ */
-  let savedData = localStorage.getItem("currentTeam");
+
+  let savedData = localStorage.getItem("pokeBuilder_team"); // <-- LA NOVA CLAU UNIFICADA
   let team = savedData ? JSON.parse(savedData) : Array(6).fill(null);
   let editingIndex = null;
-  
+
+    /* ============================================================
+       FUNCIONS AUXILIARS
+       ============================================================ */
+
+    // NOU: Funció per guardar l'equip al LocalStorage
+    const saveTeamToStorage = () => {
+        localStorage.setItem("pokeBuilder_team", JSON.stringify(team));
+    };
+
+    // 3. Modificar funció d'obrir modal
+    const openSearch = index => {
+        editingIndex = index;
+
+        // Resetegem filtres visuals
+        filterIdInput.value = "";
+        filterNameInput.value = "";
+        tableState = { filterId: "", filterName: "", sortKey: "id", sortAsc: true };
+
+        renderTable();
+        searchModal.style.display = "block";
+        filterNameInput.focus(); // Focus al cercador de nom
+        document.body.style.overflow = 'hidden';
+    };
+
+// Funció per tancar (només per referència, ja la tens)
+    const closeSearch = () => {
+        searchModal.style.display = "none";
+        editingIndex = null;
+        document.body.style.overflow = '';
+    };
+
+
   // Dades en memòria per a la cerca ràpida
   let mockPokemonData = [];
 
@@ -105,14 +149,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Modal Cerca
   const searchModal    = document.getElementById("pokemon-modal");
-  const searchBar      = document.getElementById("search-bar");
   const searchCloseBtn = searchModal.querySelector(".close-btn");
   const pokemonListUl  = document.getElementById("pokemon-list");
-  
+
   // Controls d'Ordenació (Cerca)
   const sortStatEl     = document.getElementById("sort-stat");
   const sortOrderEl    = document.getElementById("sort-order");
-  const applySortBtn   = document.getElementById("apply-sort-btn");
 
   // Modal Recomanació (IA)
   const recommendModal   = document.getElementById("recommend-modal");
@@ -173,7 +215,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const buildTopCard = (poke, idx) => {
     const type = poke.types ? poke.types[0] : "normal";
     const rgb = typeToRGB(type.toLowerCase());
-    
+
     // Contenidor principal
     const card = document.createElement("div");
     card.className = "poke-card";
@@ -229,13 +271,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     removeBtn.className = "action-btn remove";
     removeBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
     removeBtn.addEventListener("click", e => {
-      e.stopPropagation(); 
+      e.stopPropagation();
       removeFromTeam(idx);
     });
 
     const editBtn = document.createElement("button");
     editBtn.className = "action-btn edit";
-    editBtn.innerHTML = `<img src="src/edit-icon.png" style="width:16px; height:16px; filter: invert(1);">`; 
+    editBtn.innerHTML = `<img src="src/edit-icon.png" style="width:16px; height:16px; filter: invert(1);">`;
     editBtn.addEventListener("click", e => {
       e.stopPropagation();
       localStorage.setItem("currentTeam", JSON.stringify(team));
@@ -248,7 +290,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Estadístiques
     const statsContainer = document.createElement("div");
-    statsContainer.className = "stats-container"; 
+    statsContainer.className = "stats-container";
 
     const statsList = document.createElement("div");
     statsList.className = "stats-bars-container";
@@ -263,7 +305,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         statsInOrder.forEach(([key, label]) => {
             const val = poke.stats[key];
             const percent = Math.min((val / MAX_STAT) * 100, 100);
-            
+
             const row = document.createElement("div");
             row.className = "stat-row-compact";
             row.innerHTML = `
@@ -318,7 +360,7 @@ document.addEventListener("DOMContentLoaded", async () => {
      ============================================================ */
   async function updateHoloStats() {
     const activeTeam = team.filter(Boolean);
-    
+
     if (!powerEl || !domEl || !weakEl) return;
 
     // Reset si està buit
@@ -337,8 +379,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if(p.stats) {
         totalPower += (p.stats.hp + p.stats.attack + p.stats.defense + p.stats.special_attack + p.stats.special_defense + p.stats.speed);
       }
-      p.types.forEach(t => { 
-        typeCounts[t] = (typeCounts[t] || 0) + 1; 
+      p.types.forEach(t => {
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
       });
     });
 
@@ -347,26 +389,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     let maxType = "-";
     let maxCount = 0;
     for (const [t, count] of Object.entries(typeCounts)) {
-      if (count > maxCount) { 
-        maxCount = count; 
-        maxType = t; 
+      if (count > maxCount) {
+        maxCount = count;
+        maxType = t;
       }
     }
-    
+
     domEl.textContent = maxType.toUpperCase();
     if (maxType !== "-") {
-        domEl.style.color = `rgb(${typeToRGB(maxType.toLowerCase())})`; 
+        domEl.style.color = `rgb(${typeToRGB(maxType.toLowerCase())})`;
     } else {
         domEl.style.color = "#fff";
     }
 
     // 2. Consulta al Backend (Vulnerabilitats)
-    weakEl.textContent = "..."; 
+    weakEl.textContent = "...";
     weakEl.style.color = "rgba(255,255,255,0.5)";
 
     try {
         const teamIds = activeTeam.map(p => p.pokedex_id);
-        
+
         const response = await fetch(`${API_BASE}/ai/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -380,7 +422,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (data.success && data.analysis) {
             const realWeakness = data.analysis.major_weakness || "NONE";
             weakEl.textContent = realWeakness.toUpperCase();
-            weakEl.style.color = "#ff4d4d"; 
+            weakEl.style.color = "#ff4d4d";
         } else {
             weakEl.textContent = "N/A";
             weakEl.style.color = "#777";
@@ -388,8 +430,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     } catch (error) {
         console.error("Error connectant amb l'IA:", error);
-        weakEl.textContent = "ERR"; 
-        weakEl.style.color = "#ef4444"; 
+        weakEl.textContent = "ERR";
+        weakEl.style.color = "#ef4444";
     }
   }
 
@@ -412,12 +454,14 @@ document.addEventListener("DOMContentLoaded", async () => {
      ============================================================ */
   const removeFromTeam = idx => {
     team[idx] = null;
+    saveTeamToStorage();
     renderTeamGrid();
     refreshSearchList(); // Actualitza la llista per desbloquejar el Pokémon eliminat
   };
 
   const clearTeam = () => {
     team = Array(6).fill(null);
+    saveTeamToStorage();
     renderTeamGrid();
     refreshSearchList();
   };
@@ -437,7 +481,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     emptySlots.forEach((slot, k) => {
       if (pool[k]) team[slot] = pool[k];
     });
-
+    saveTeamToStorage();
     renderTeamGrid();
     refreshSearchList();
   };
@@ -447,69 +491,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   /* ============================================================
      GESTIÓ MODAL DE CERCA
      ============================================================ */
-  const openSearch = index => {
-    editingIndex = index;
-    searchBar.value = "";
-    // Resetejar els filtres d'ordre visualment
-    if (sortStatEl) sortStatEl.value = "";
-    if (sortOrderEl) sortOrderEl.value = "desc";
-    
-    populateList(mockPokemonData);
-    searchModal.style.display = "block";
-    searchBar.focus();
-    document.body.style.overflow = 'hidden';
-  };
-
-  const closeSearch = () => {
-    searchModal.style.display = "none";
-    editingIndex = null;
-    document.body.style.overflow = '';
-  };
-
-  const refreshSearchList = async () => {
-    const query = (searchBar.value || "").toLowerCase().trim();
-    const selected = new Set(getSelectedNames());
-    let list = [];
-
-    if (query.length >= 2) {
-      list = await fetchPokemons(query);
-    } else {
-      list = mockPokemonData;
-    }
-
-    // Filtrem els que ja estan a l'equip
-    list = list.filter(p => !selected.has(p.name.toLowerCase()));
-    populateList(list);
-  };
-
-  const populateList = pokemons => {
-    pokemonListUl.innerHTML = "";
-    pokemons.forEach(pokemon => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <img src="${pokemon.sprite_url}" alt="${pokemon.name}" />
-        <span>${padId(pokemon.pokedex_id)} ${pokemon.name}</span>
-        <small>${pokemon.types.join(", ")}</small>
-      `;
-      li.addEventListener("click", () => {
-        if (editingIndex !== null) {
-          team[editingIndex] = pokemon;
-          renderTeamGrid();
-          closeSearch();
-        }
-      });
-      pokemonListUl.appendChild(li);
-    });
-  };
 
   /* ============================================================
      RECOMANACIÓ AMB IA (UI NOVA)
      ============================================================ */
-  let currentRecommendation = null; 
+  let currentRecommendation = null;
 
   const openRecommendModal = async () => {
     const teamIds = team.filter(Boolean).map(p => p.pokedex_id);
-    
+
     if (teamIds.length === 0) {
       alert("Afegeix almenys un Pokémon a l'equip per obtenir recomanacions.");
       return;
@@ -521,22 +511,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       recommendStatus.style.display = "block";
       recommendStatus.innerHTML = "<p style='text-align: center; padding: 40px;'>🔮 Consultant l'Oracle Pokémon...</p>";
       recommendModal.style.display = "block";
-      
+
       const response = await fetch(`${API_BASE}/ai/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ team_ids: teamIds })
       });
-      
+
       if (!response.ok) throw new Error("Error en la petició d'IA");
-      
+
       const data = await response.json();
-      
+
       if (!data.success || !data.recommendations || data.recommendations.length === 0) {
         recommendStatus.innerHTML = "<p style='text-align:center'>No s'han trobat recomanacions.</p>";
         return;
       }
-      
+
       const topRec = data.recommendations[0];
       currentRecommendation = topRec;
 
@@ -590,7 +580,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       recommendStatus.style.display = "none";
       recommendResults.style.display = "block";
-      
+
     } catch (error) {
       console.error("Error recomanació:", error);
       recommendResults.style.display = "none";
@@ -602,9 +592,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const addRecommendationToTeam = () => {
     if (!currentRecommendation) return;
     const emptyIndex = team.findIndex(slot => slot === null);
-    
+
     if (emptyIndex !== -1) {
         team[emptyIndex] = currentRecommendation;
+        saveTeamToStorage();
         renderTeamGrid();
         closeRecommendModal();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -620,7 +611,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   /* ============================================================
      LISTENERS D'EVENTS
      ============================================================ */
-  
+
   // Tancar modals en fer clic fora
   document.querySelectorAll(".modal").forEach(modal => {
     modal.addEventListener("click", e => {
@@ -630,23 +621,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Events Cerca
   searchCloseBtn.addEventListener("click", closeSearch);
-  searchBar.addEventListener("input", refreshSearchList);
 
-  // Events Ordenació
-  applySortBtn.addEventListener("click", async () => {
-    const stat = sortStatEl.value;
-    const order = sortOrderEl.value;
 
-    if (!stat) {
-      alert("Selecciona una estadística per ordenar.");
-      return;
-    }
-
-    pokemonListUl.innerHTML = '<li style="justify-content:center;">⏳ Carregant...</li>';
-    const sortedList = await fetchSortedPokemons(stat, order);
-    searchBar.value = ""; 
-    populateList(sortedList);
-  });
 
   // Events Recomanació
   recommendBtn.addEventListener("click", openRecommendModal);
@@ -665,4 +641,420 @@ document.addEventListener("DOMContentLoaded", async () => {
      ============================================================ */
   renderTeamGrid();
   console.log("Aplicació inicialitzada.");
+
+
+/* ============================================================
+     GESTIÓ D'USUARIS (FRONTEND MOCK)
+     ============================================================ */
+
+// Elements Generals
+const loginBtn = document.getElementById("login-btn");
+const authModal = document.getElementById("auth-modal");
+const authCloseBtn = authModal.querySelector(".close-btn");
+const userNameDisplay = document.getElementById("user-name-display");
+
+// Elements de Vistes
+const viewLogin = document.getElementById("view-login");
+const viewRegister = document.getElementById("view-register");
+const goToRegisterBtn = document.getElementById("go-to-register");
+const goToLoginBtn = document.getElementById("go-to-login");
+
+// Elements de Formularis
+const loginForm = document.getElementById("form-login");
+const loginInput = document.getElementById("login-user");
+
+const registerForm = document.getElementById("form-register");
+const regInputUser = document.getElementById("reg-user");
+
+// 1. Comprovar si ja estem loguejats
+const checkLoginStatus = () => {
+    const savedUser = localStorage.getItem("pokeUser");
+
+    if (savedUser) {
+        userNameDisplay.textContent = savedUser;
+        loginBtn.classList.add("logged-in");
+        loginBtn.title = "Tancar Sessió";
+    } else {
+        userNameDisplay.textContent = "Login";
+        loginBtn.classList.remove("logged-in");
+        loginBtn.title = "Iniciar Sessió";
+    }
+};
+// --- ELEMENTS DEL MODAL DE PERFIL ---
+const profileModal = document.getElementById("profile-modal");
+const profileCloseBtn = profileModal.querySelector(".close-btn");
+const profileUsername = document.getElementById("profile-username");
+const profileLogoutBtn = document.getElementById("profile-logout-btn");
+const userTeamsList = document.getElementById("user-teams-list");
+
+// 2. Obrir Modal (MODIFICAT)
+loginBtn.addEventListener("click", () => {
+    const savedUser = localStorage.getItem("pokeUser");
+
+    if (savedUser) {
+        // Si estem loguejats -> OBRIM EL DASHBOARD
+        openProfileModal(savedUser);
+    } else {
+        // Si no -> OBRIM LOGIN
+        viewLogin.classList.remove("hidden");
+        viewRegister.classList.add("hidden");
+        authModal.style.display = "block";
+        loginInput.focus();
+    }
+});
+
+// Funció per obrir i renderitzar el perfil
+const openProfileModal = (username) => {
+    profileUsername.textContent = username;
+
+    // Aquí simularem la crida al backend per obtenir equips
+    // De moment, fem servir una llista buida []
+    const userTeams = [];
+
+    renderUserTeams(userTeams);
+    profileModal.style.display = "block";
+};
+
+// Funció per pintar la llista d'equips
+const renderUserTeams = (teams) => {
+    userTeamsList.innerHTML = "";
+
+    if (teams.length === 0) {
+        // --- ESTAT BUIT (El que demanaves) ---
+        userTeamsList.innerHTML = `
+            <div class="empty-state">
+                <span class="empty-icon">📂</span>
+                <p>Encara no tens cap equip guardat.</p>
+                <button id="create-first-team-btn" class="ui-btn primary small">
+                    Crear el meu primer equip
+                </button>
+            </div>
+          `;
+
+        // Donem funcionalitat al botó de l'estat buit
+        document.getElementById("create-first-team-btn").addEventListener("click", () => {
+            profileModal.style.display = "none"; // Tanquem modal
+            // Ja estem al builder, així que l'usuari pot començar a editar
+        });
+
+    } else {
+        // (Aquí aniria el codi per pintar la llista quan tinguem equips)
+        userTeamsList.textContent = "Aquí sortiran els teus equips...";
+    }
+};
+
+// --- LOGOUT DES DEL PERFIL ---
+profileLogoutBtn.addEventListener("click", () => {
+    if(confirm("Segur que vols sortir?")) {
+        localStorage.removeItem("pokeUser");
+        checkLoginStatus();
+        profileModal.style.display = "none";
+    }
+});
+
+// Tancar el modal de perfil
+profileCloseBtn.addEventListener("click", () => {
+    profileModal.style.display = "none";
+});
+
+// Tancar si cliquem fora
+window.addEventListener("click", (e) => {
+    if (e.target === profileModal) profileModal.style.display = "none";
+    // ... (els altres modals)
+});
+
+
+
+// 3. Navegació entre Login i Registre
+goToRegisterBtn.addEventListener("click", (e) => {
+    e.preventDefault(); // Evita que l'enllaç recarregui la pàgina
+    viewLogin.classList.add("hidden");
+    viewRegister.classList.remove("hidden");
+    regInputUser.focus();
+});
+
+goToLoginBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    viewRegister.classList.add("hidden");
+    viewLogin.classList.remove("hidden");
+    loginInput.focus();
+});
+
+// 4. Tancar Modal
+authCloseBtn.addEventListener("click", () => {
+    authModal.style.display = "none";
+});
+
+// 5. Processar LOGIN
+loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const username = loginInput.value.trim();
+    // Agafem la contrasenya del nou input
+    const password = document.getElementById("login-pass").value.trim();
+
+    // Validem que tots dos camps tinguin text
+    if (username && password) {
+        localStorage.setItem("pokeUser", username);
+
+        checkLoginStatus();
+        authModal.style.display = "none";
+
+        // Netejem el formulari
+        loginInput.value = "";
+        document.getElementById("login-pass").value = "";
+    } else {
+        alert("Si us plau, introdueix usuari i contrasenya.");
+    }
+});
+
+// 6. Processar REGISTRE (Simulat)
+registerForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const username = regInputUser.value.trim();
+    const password = document.getElementById("reg-pass").value.trim();
+
+    // Validació simple (només comprovem que hi hagi usuari i contrasenya)
+    if (username && password) {
+        // Simulem que es crea el compte i fem login directe
+        localStorage.setItem("pokeUser", username);
+
+        alert("Compte creat correctament! Benvingut/da.");
+
+        checkLoginStatus();
+        authModal.style.display = "none";
+
+        // Netejem el formulari (només usuari i pass)
+        regInputUser.value = "";
+        document.getElementById("reg-pass").value = "";
+    }
+});
+
+// Executar al principi
+checkLoginStatus();
+
+/* ============================================================
+     GESTIÓ DE GUARDAR EQUIP (NOU)
+     ============================================================ */
+const saveTeamBtn = document.getElementById("save-team-btn");
+const teamNameInput = document.getElementById("team-name-input");
+
+saveTeamBtn.addEventListener("click", () => {
+    // 1. Validacions
+    const currentUser = localStorage.getItem("pokeUser");
+    if (!currentUser) {
+        alert("Has d'iniciar sessió per guardar equips!");
+        // Obre el modal de login automàticament
+        loginBtn.click();
+        return;
+    }
+
+    const activePokemons = team.filter(Boolean);
+    if (activePokemons.length === 0) {
+        alert("L'equip està buit! Afegeix almenys un Pokémon.");
+        return;
+    }
+
+    const teamName = teamNameInput.value.trim() || "Equip sense nom";
+
+    // 2. Crear l'objecte de l'equip
+    const newTeam = {
+        id: Date.now(), // ID únic (timestamp)
+        name: teamName,
+        members: team, // L'array de 6 slots actual
+        createdAt: new Date().toISOString()
+    };
+
+    // 3. Guardar al LocalStorage (Simulant BBDD)
+    // Recuperem els equips existents o creem una llista nova
+    let userTeams = JSON.parse(localStorage.getItem(`teams_${currentUser}`)) || [];
+
+    // Afegim el nou equip
+    userTeams.push(newTeam);
+
+    // Guardem la llista actualitzada
+    localStorage.setItem(`teams_${currentUser}`, JSON.stringify(userTeams));
+
+    // 4. Feedback a l'usuari
+    alert(`Equip "${teamName}" guardat correctament!`);
+
+    // Opcional: Netejar l'equip actual després de guardar?
+    // clearTeam();
+});
+
+/* ============================================================
+     DATA GRID (TAULA DE CERCA AMB FILTRES JS)
+     ============================================================ */
+
+// Estat intern de la taula
+let tableState = {
+    filterId: "",
+    filterName: "",
+    sortKey: "id", // Per defecte ordenat per ID
+    sortAsc: true
+};
+
+// Elements
+const tableBody = document.getElementById("table-body");
+const filterIdInput = document.getElementById("filter-id");
+const filterNameInput = document.getElementById("filter-name");
+const resultsCount = document.getElementById("results-count");
+const sortHeaders = document.querySelectorAll(".sortable");
+
+// --- FUNCIÓ PRINCIPAL: RENDERITZAR TAULA ---
+const renderTable = () => {
+    tableBody.innerHTML = "";
+
+    // 1. FILTRATGE (Client-Side)
+    // Filtrem sobre 'mockPokemonData' que conté TOTS els Pokémon
+    let filteredData = mockPokemonData.filter(p => {
+        // Filtre ID (si n'hi ha)
+        const matchId = tableState.filterId === "" || p.pokedex_id.toString().includes(tableState.filterId);
+        // Filtre Nom (si n'hi ha)
+        const matchName = tableState.filterName === "" || p.name.toLowerCase().includes(tableState.filterName.toLowerCase());
+
+        return matchId && matchName;
+    });
+
+    // 2. ORDENACIÓ
+    filteredData.sort((a, b) => {
+        let valA, valB;
+
+        if (tableState.sortKey === 'id') {
+            valA = a.pokedex_id; valB = b.pokedex_id;
+        } else if (tableState.sortKey === 'name') {
+            valA = a.name; valB = b.name;
+        } else {
+            // És una stat (hp, attack...)
+            valA = a.stats ? a.stats[tableState.sortKey] : 0;
+            valB = b.stats ? b.stats[tableState.sortKey] : 0;
+        }
+
+        if (valA < valB) return tableState.sortAsc ? -1 : 1;
+        if (valA > valB) return tableState.sortAsc ? 1 : -1;
+        return 0;
+    });
+
+    // 3. PAGINACIÓ VIRTUAL (Per rendiment)
+    // Només pintem els primers 50 resultats perquè el navegador no es pengi
+    const displayData = filteredData.slice(0, 50);
+
+    // 4. PINTAR FILES
+    displayData.forEach(p => {
+        const tr = document.createElement("tr");
+
+        // Valors segurs per stats
+        const s = p.stats || { hp:0, attack:0, defense:0, special_attack:0, special_defense:0, speed:0 };
+
+        tr.innerHTML = `
+              <td class="col-img"><img src="${p.sprite_url}" loading="lazy"></td>
+              <td class="col-id">#${padId(p.pokedex_id)}</td>
+              <td class="col-name">${capitalize(p.name)}</td>
+              <td class="col-stat">${s.hp}</td>
+              <td class="col-stat">${s.attack}</td>
+              <td class="col-stat">${s.defense}</td>
+              <td class="col-stat">${s.special_attack}</td>
+              <td class="col-stat">${s.special_defense}</td>
+              <td class="col-stat">${s.speed}</td>
+              <td class="col-action">
+                  <button class="add-row-btn" title="Afegir">+</button>
+              </td>
+          `;
+
+        // Clic a la fila -> Seleccionar Pokémon
+        tr.addEventListener("click", () => selectPokemonFromTable(p));
+
+        tableBody.appendChild(tr);
+    });
+
+    resultsCount.textContent = `Mostrant ${displayData.length} de ${filteredData.length} Pokémon`;
+};
+
+const selectPokemonFromTable = (pokemon) => {
+    if (editingIndex !== null) {
+        team[editingIndex] = pokemon;
+        saveTeamToStorage();
+        renderTeamGrid();
+        closeSearch();
+    }
+};
+
+// --- LISTENERS DE LA TAULA ---
+
+// 1. Inputs de Text (ID i Nom)
+filterIdInput.addEventListener("input", (e) => {
+    tableState.filterId = e.target.value;
+    renderTable();
+});
+
+    filterNameInput.addEventListener("input", debounce(async (e) => {
+        const query = e.target.value.trim();
+
+        // Feedback visual immediat perquè l'usuari sàpiga que passa alguna cosa
+        resultsCount.textContent = "Actualitzant llista...";
+
+        // --- CAS 1: EL CERCADOR ESTÀ BUIT (Reset) ---
+        if (query.length === 0) {
+            try {
+                // Opció A: Si la teva API retorna tots els Pokémon quan q està buit:
+                // (Això és el més eficient si el backend ho suporta)
+                const allData = await fetchPokemons("");
+
+                /* NOTA: Si 'fetchPokemons("")' no et retorna res perquè el backend
+                   exigeix text, pots recuperar la funció 'fetchAllPokemons()' que tenies
+                   al principi i cridar-la aquí:
+                   const allData = await fetchAllPokemons();
+                */
+
+                mockPokemonData = allData;
+
+                // Important: Assegurar que l'estat del filtre està net
+                tableState.filterName = "";
+
+                renderTable();
+                // Actualitzem el comptador manualment per si de cas
+                resultsCount.textContent = `Mostrant ${mockPokemonData.length} Pokémon`;
+
+            } catch (err) {
+                console.error("Error recuperant la llista completa:", err);
+                resultsCount.textContent = "Error recuperant dades.";
+            }
+            return; // Sortim de la funció aquí
+        }
+
+        // --- CAS 2: HI HA TEXT (Cerca al Backend) ---
+        try {
+            const results = await fetchPokemons(query);
+            mockPokemonData = results;
+
+            // Netegem el filtre intern de la taula perquè ja ve filtrat de servidor
+            tableState.filterName = "";
+
+            renderTable();
+
+        } catch (error) {
+            console.error("Error cercant en viu:", error);
+            resultsCount.textContent = "Error en la cerca";
+        }
+
+    }, 300))
+
+// 2. Clic a Capçaleres (Ordenació)
+sortHeaders.forEach(th => {
+    th.addEventListener("click", () => {
+        const key = th.dataset.key;
+
+        // Si cliquem la mateixa, invertim ordre
+        if (tableState.sortKey === key) {
+            tableState.sortAsc = !tableState.sortAsc;
+        } else {
+            tableState.sortKey = key;
+            // Per defecte les stats les volem de major a menor (desc)
+            tableState.sortAsc = (key === 'id' || key === 'name');
+        }
+        renderTable();
+    });
+});
+
+
 });

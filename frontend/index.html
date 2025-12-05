@@ -15,20 +15,37 @@
 
 <body class="dark">
 
-  <header class="header">
+<header class="header">
     <div class="brand">
-      <img src="src/pokeball-icon.svg" alt="Pokéball" class="brand-icon" />
-      <span class="brand-name">PokeBuilder</span>
+        <img src="src/pokeball-icon.svg" alt="Pokéball" class="brand-icon" />
+        <span class="brand-name">PokeBuilder</span>
     </div>
-  </header>
+
+    <div class="user-actions">
+        <button id="login-btn" class="icon-btn" aria-label="Inicia Sessió">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span id="user-name-display" class="user-label">Login</span>
+        </button>
+    </div>
+</header>
 
   <main class="container">
 
-    <section class="team-top">
-      <h2 class="section-title">El teu equip</h2>
-      <div id="team-grid" class="team-grid">
-        </div>
-    </section>
+      <section class="team-top">
+          <div class="team-header-row">
+              <div class="team-name-input-wrapper">
+                  <input type="text" id="team-name-input" class="team-name-input" placeholder="Nom de l'Equip..." value="El Meu Equip">
+                  <span class="edit-icon">✏️</span>
+              </div>
+              <button id="save-team-btn" class="ui-btn primary">Guardar Equip</button>
+          </div>
+
+          <div id="team-grid" class="team-grid">
+          </div>
+      </section>
 
     <section class="carousel-area">
       <h3 class="section-title subtle">Vista 3D</h3>
@@ -76,42 +93,46 @@
 
   </main>
 
-  <div id="pokemon-modal" class="modal" aria-hidden="true">
-    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="search-title">
-      <button class="close-btn" aria-label="Tanca">×</button>
+<div id="pokemon-modal" class="modal" aria-hidden="true">
+    <div class="modal-content glass-panel large" role="dialog">
+        <button class="close-btn" aria-label="Tanca">×</button>
 
-      <h2 id="search-title">Selecciona un Pokémon</h2>
+        <h2 style="margin-bottom: 20px; padding-left: 5px;">Cercador de Pokémon</h2>
 
-      <input
-        type="text"
-        id="search-bar"
-        placeholder="Cerca per nom (ex: Pikachu)..."
-        aria-label="Cercar Pokémon"
-        autocomplete="off"
-      />
+        <div class="datagrid-container">
+            <table class="pokemon-table">
+                <thead>
+                <tr>
+                    <th class="col-img">Img</th>
+                    <th class="sortable" data-key="id">ID <small>⇅</small></th>
+                    <th class="sortable" data-key="name">Nom <small>⇅</small></th>
+                    <th class="col-stat sortable" data-key="hp">HP</th>
+                    <th class="col-stat sortable" data-key="attack">ATK</th>
+                    <th class="col-stat sortable" data-key="defense">DEF</th>
+                    <th class="col-stat sortable" data-key="special_attack">SPA</th>
+                    <th class="col-stat sortable" data-key="special_defense">SPD</th>
+                    <th class="col-stat sortable" data-key="speed">SPE</th>
+                    <th class="col-action"></th>
+                </tr>
 
-      <div class="sort-controls">
-        <select id="sort-stat" class="sort-select">
-          <option value="" disabled selected>Filtrar per Stats...</option>
-          <option value="hp">Vida (HP)</option>
-          <option value="atac">Atac</option>
-          <option value="defensa">Defensa</option>
-          <option value="atac_especial">Atac Especial</option>
-          <option value="defensa_especial">Defensa Especial</option>
-          <option value="velocitat">Velocitat</option>
-        </select>
+                <tr class="filter-row">
+                    <th></th> <th><input type="text" id="filter-id" placeholder="#" class="table-input"></th>
+                    <th><input type="text" id="filter-name" placeholder="Filtra per nom..." class="table-input"></th>
+                    <th colspan="7"></th>
+                </tr>
+                </thead>
 
-        <select id="sort-order" class="sort-select">
-          <option value="desc">Major a Menor</option>
-          <option value="asc">Menor a Major</option>
-        </select>
+                <tbody id="table-body">
+                </tbody>
+            </table>
+        </div>
 
-        <button id="apply-sort-btn" class="ui-btn primary small">Aplicar</button>
-      </div>
+        <div class="table-footer">
+            <span id="results-count">Carregant...</span>
+        </div>
 
-      <ul id="pokemon-list" aria-live="polite"></ul>
     </div>
-  </div>
+</div>
   
   <div id="recommend-modal" class="modal" aria-hidden="true">
     <div class="modal-content glass-panel" role="dialog">
@@ -202,6 +223,92 @@
       <svg width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
     </button>
   </div>
+
+<div id="auth-modal" class="modal" aria-hidden="true">
+    <div class="modal-content glass-panel small" role="dialog">
+        <button class="close-btn" aria-label="Tanca">×</button>
+
+        <div id="view-login">
+            <div class="auth-header">
+                <h2>Benvingut!</h2>
+                <p>Inicia sessió per guardar els teus equips.</p>
+            </div>
+
+            <form id="form-login" class="auth-form">
+                <div class="input-group">
+                    <label>Nom d'Usuari</label>
+                    <input type="text" id="login-user" placeholder="Entrenador..." required>
+                </div>
+
+                <div class="input-group">
+                    <label>Contrasenya</label>
+                    <input type="password" id="login-pass" placeholder="••••••" required>
+                </div>
+                <button type="submit" class="ui-btn primary full">Entrar</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>No tens compte? <a href="#" id="go-to-register" class="link">Registra't</a></p>
+            </div>
+        </div>
+
+        <div id="view-register" class="hidden">
+            <div class="auth-header">
+                <h2>Nou Compte</h2>
+                <p>Uneix-te a la comunitat PokeBuilder.</p>
+            </div>
+
+            <form id="form-register" class="auth-form">
+                <div class="input-group">
+                    <label>Nom d'Usuari</label>
+                    <input type="text" id="reg-user" placeholder="Nom..." required>
+                </div>
+                <div class="input-group">
+                    <label>Contrasenya</label>
+                    <input type="password" id="reg-pass" placeholder="••••••" required>
+                </div>
+
+                <button type="submit" class="ui-btn primary full">Crear Compte</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Ja tens compte? <a href="#" id="go-to-login" class="link">Inicia Sessió</a></p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="profile-modal" class="modal" aria-hidden="true">
+    <div class="modal-content glass-panel medium" role="dialog">
+        <button class="close-btn" aria-label="Tanca">×</button>
+
+        <div class="profile-header">
+            <div class="profile-info">
+                <div class="profile-avatar">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </div>
+                <div>
+                    <h2 id="profile-username">Usuari</h2>
+                    <span class="badge">Entrenador</span>
+                </div>
+            </div>
+            <button id="profile-logout-btn" class="ui-btn ghost red-text small">
+                Tancar Sessió
+            </button>
+        </div>
+
+        <hr class="divider">
+
+        <div class="profile-body">
+            <h3 class="section-label" style="margin-bottom: 15px;">Els meus Equips</h3>
+
+            <div id="user-teams-list" class="teams-list-container">
+            </div>
+        </div>
+
+    </div>
+</div>
 
   <script src="app.js"></script>
 

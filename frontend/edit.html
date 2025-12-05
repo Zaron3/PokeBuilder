@@ -10,115 +10,133 @@
 </head>
 <body class="edit-mode">
 
-  <div class="ambient-light one"></div>
-  <div class="ambient-light two"></div>
+<div class="ambient-light one"></div>
+<div class="ambient-light two"></div>
 
-  <div class="edit-container">
-    <div class="glass-card">
-      
-      <div class="card-header">
-        <div class="sprite-container">
-            <div class="sprite-glow"></div>
-            <img id="edit-sprite" src="" alt="Sprite Pokémon" />
+<div class="editor-layout">
+
+    <div id="nav-prev" class="nav-card left hidden">
+        <div class="nav-content">
+            <span class="nav-label">ANTERIOR</span>
+            <img class="nav-sprite" src="" alt="Anterior">
+            <span class="nav-name">Nom</span>
         </div>
-        
-        <div class="pokemon-identity">
-          <h1 id="edit-name">POKÉMON</h1>
-          <span id="edit-id" class="badge">#000</span>
-        </div>
-        
-        <div class="header-actions">
-          <button id="cancel-btn" class="ui-btn ghost">Tornar</button>
-          <button id="save-btn" class="ui-btn primary">Guardar</button>
-        </div>
-      </div>
-
-      <div class="separator"></div>
-
-      <div class="form-grid">
-        
-        <div class="form-section">
-          <h3 class="section-label">
-            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
-            MOVESET
-          </h3>
-          
-          <div class="inputs-wrapper">
-            <div class="input-box">
-                <label for="move-1">Moviment 1</label>
-                <div class="select-wrapper">
-                    <select id="move-1"><option value="">Carregant...</option></select>
-                </div>
-            </div>
-            <div class="input-box">
-                <label for="move-2">Moviment 2</label>
-                <div class="select-wrapper">
-                    <select id="move-2"><option value="">Carregant...</option></select>
-                </div>
-            </div>
-            <div class="input-box">
-                <label for="move-3">Moviment 3</label>
-                <div class="select-wrapper">
-                    <select id="move-3"><option value="">Carregant...</option></select>
-                </div>
-            </div>
-            <div class="input-box">
-                <label for="move-4">Moviment 4</label>
-                <div class="select-wrapper">
-                    <select id="move-4"><option value="">Carregant...</option></select>
-                </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h3 class="section-label">
-            <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-            CONFIGURACIÓ
-          </h3>
-          
-          <div class="inputs-wrapper">
-            
-            <div class="input-box">
-              <label for="edit-ability">Habilitat</label>
-              <div class="select-wrapper">
-                  <select id="edit-ability"></select>
-              </div>
-            </div>
-            
-            <div class="input-box">
-              <label for="edit-nature">Naturalesa</label>
-              <div class="select-wrapper">
-                  <select id="edit-nature"></select>
-              </div>
-            </div>
-
-            <div class="input-box">
-              <label for="edit-item">Objecte</label>
-              <div class="input-wrapper">
-                  <input list="items-list" id="edit-item" placeholder="Cerca objecte..." autocomplete="off">
-                  <datalist id="items-list">
-                    <option value="Leftovers">
-                    <option value="Life Orb">
-                    <option value="Choice Scarf">
-                    <option value="Focus Sash">
-                    <option value="Rocky Helmet">
-                    <option value="Heavy-Duty Boots">
-                    <option value="Assault Vest">
-                    <option value="Sitrus Berry">
-                    <option value="Choice Band">
-                    <option value="Choice Specs">
-                  </datalist>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
     </div>
-  </div>
 
-  <script src="edit.js"></script>
+    <div class="edit-container">
+        <div class="glass-card">
+
+            <div class="card-header">
+                <div class="sprite-container">
+                    <div class="sprite-glow"></div>
+                    <img id="edit-sprite" src="" alt="Sprite Pokémon" />
+                </div>
+
+                <div class="pokemon-identity">
+                    <h1 id="edit-name">POKÉMON</h1>
+                    <span id="edit-id" class="badge">#000</span>
+                </div>
+
+                <div class="header-actions">
+                    <button id="cancel-btn" class="ui-btn ghost">Tornar</button>
+                    <button id="save-btn" class="ui-btn primary">Guardar</button>
+                </div>
+            </div>
+
+            <div class="separator"></div>
+
+            <div class="form-grid">
+
+                <div class="form-section">
+                    <h3 class="section-label">
+                        <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+                        MOVESET
+                    </h3>
+
+                    <div class="inputs-wrapper">
+                        <div class="input-box">
+                            <label for="move-1">Moviment 1</label>
+                            <div class="select-wrapper">
+                                <select id="move-1"><option value="">Carregant...</option></select>
+                            </div>
+                        </div>
+                        <div class="input-box">
+                            <label for="move-2">Moviment 2</label>
+                            <div class="select-wrapper">
+                                <select id="move-2"><option value="">Carregant...</option></select>
+                            </div>
+                        </div>
+                        <div class="input-box">
+                            <label for="move-3">Moviment 3</label>
+                            <div class="select-wrapper">
+                                <select id="move-3"><option value="">Carregant...</option></select>
+                            </div>
+                        </div>
+                        <div class="input-box">
+                            <label for="move-4">Moviment 4</label>
+                            <div class="select-wrapper">
+                                <select id="move-4"><option value="">Carregant...</option></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3 class="section-label">
+                        <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                        CONFIGURACIÓ
+                    </h3>
+
+                    <div class="inputs-wrapper">
+
+                        <div class="input-box">
+                            <label for="edit-ability">Habilitat</label>
+                            <div class="select-wrapper">
+                                <select id="edit-ability"></select>
+                            </div>
+                        </div>
+
+                        <div class="input-box">
+                            <label for="edit-nature">Naturalesa</label>
+                            <div class="select-wrapper">
+                                <select id="edit-nature"></select>
+                            </div>
+                        </div>
+
+                        <div class="input-box">
+                            <label for="edit-item">Objecte</label>
+                            <div class="input-wrapper">
+                                <input list="items-list" id="edit-item" placeholder="Cerca objecte..." autocomplete="off">
+                                <datalist id="items-list">
+                                    <option value="Leftovers">
+                                    <option value="Life Orb">
+                                    <option value="Choice Scarf">
+                                    <option value="Focus Sash">
+                                    <option value="Rocky Helmet">
+                                    <option value="Heavy-Duty Boots">
+                                    <option value="Assault Vest">
+                                    <option value="Sitrus Berry">
+                                    <option value="Choice Band">
+                                    <option value="Choice Specs">
+                                </datalist>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="nav-next" class="nav-card right hidden">
+        <div class="nav-content">
+            <span class="nav-label">SEGÜENT</span>
+            <img class="nav-sprite" src="" alt="Següent">
+            <span class="nav-name">Nom</span>
+        </div>
+    </div>
+
+</div> <script src="edit.js"></script>
 </body>
 </html>
