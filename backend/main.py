@@ -1,7 +1,9 @@
+from idlelib.query import Query
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from elasticsearch import Elasticsearch
 # Assegura't d'haver instal·lat la versió correcta! ("pip install 'elasticsearch<9.0.0'")
 from elasticsearch.exceptions import ConnectionError as ESConnectionError
@@ -72,21 +74,90 @@ def get_es_client():
 def ruta_arrel():
     return {"missatge": "El servidor FastAPI del PokeBuilder funciona!"}
 
-# Endpoint 3.1: Cerca de Pokémon per autocompletar
+# --- ENDPOINT UNIFICAT: Cerca i Ordenació ---
 @app.get("/api/v1/pokemon/search")
-def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_client)):
+def search_pokemon(
+        q: str = None,          # Opcional: text per buscar (nom)
+        stat: str = None,       # Opcional: estadística per ordenar
+        order: str = "desc",    # Opcional: direcció (asc/desc)
+        types: List[str] = Query(None), # Opcional: Llista de tipus (ex: ?types=fire&types=water)
+        es_client: Elasticsearch = Depends(get_es_client)
+):
     """
-    Busca Pokémon pel terme de cerca 'q' i retorna una llista simplificada.
+    Endpoint Unificat: Permet buscar per nom, filtrar per tipus i ordenar per estadística.
+
+    Exemple d'ús:
+    - /api/v1/pokemon/search?types=fire&types=flying (Torna Charizard, etc.)
+    - /api/v1/pokemon/search?q=pika&types=electric (Torna Pikachu)
     """
-    query = {
-        "query": {
+
+    # Construïm una consulta "bool" que permet combinar condicions
+    must_clauses = []
+    filter_clauses = []
+
+    # 1. Cerca per text (si n'hi ha) -> Va al 'must'
+    if q:
+        must_clauses.append({
             "prefix": {
                 "name.keyword": {
                     "value": q.lower()
                 }
             }
-        }
+        })
+    else:
+        # Si no hi ha text ni filtres, volem tots els resultats.
+        # Però si hi ha filtres, el 'match_all' és implícit.
+        if not types:
+            must_clauses.append({"match_all": {}})
+
+    # 2. Filtre per Tipus (si n'hi ha) -> Va al 'filter'
+    if types:
+        # Normalitzem a minúscules per si de cas
+        types_lower = [t.lower() for t in types]
+        # La consulta 'terms' funciona com un OR:
+        # Busca documents on el camp 'types' contingui ALMENYS UN dels valors de la llista.
+        filter_clauses.append({
+            "terms": {
+                "types": types_lower
+            }
+        })
+
+    # 3. Construir l'ordenació (Sort)
+    sort_criteria = []
+
+    if stat:
+        # Si s'ha demanat una estadística concreta, validem i ordenem per ella
+        stat_key = STAT_MAPPING.get(stat.lower())
+        if not stat_key:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Paràmetre 'stat' invàlid. Prova amb un de: {', '.join(STAT_MAPPING.keys())}"
+            )
+
+        # Validar l'ordre
+        if order.lower() not in ["asc", "desc"]:
+            raise HTTPException(status_code=400, detail="L'ordre ha de ser 'asc' o 'desc'")
+
+        # Afegim el criteri d'ordenació per estadística
+        elastic_stat_field = f"stats.{stat_key}"
+        sort_criteria.append({ elastic_stat_field: {"order": order.lower()} })
+    else:
+        # PER DEFECTE: Ordenem per ID (ascendent)
+        sort_criteria.append({ "pokedex_id": {"order": "asc"} })
+
+    # 4. Muntar la consulta final completa
+    query = {
+        "query": {
+            "bool": {
+                "must": must_clauses,
+                "filter": filter_clauses
+            }
+        },
+        "sort": sort_criteria,
+        "size": 200 # Limitem a 200 resultats per pàgina
     }
+
+    # 5. Executar i Retornar
     response = es_client.search(index="pokemon", body=query)
     results = []
     for hit in response['hits']['hits']:
@@ -100,62 +171,129 @@ def search_pokemon_by_name(q: str, es_client: Elasticsearch = Depends(get_es_cli
         })
     return results
 
-# --- NOU ENDPOINT: Ordenar Pokémon per Estadística ---
-# **** AQUEST HA D'ANAR ABANS DE .../{pokedex_id} ****
-@app.get("/api/v1/pokemon/sort")
-def sort_pokemon_by_stat(
-        stat: str,
-        order: str = "desc",
+# Endpoint: Cercador d'Habilitats
+# **** AQUEST TAMBÉ HA D'ANAR ABANS DE .../{pokedex_id} ****
+@app.get("/api/v1/pokemon/{pokedex_id}/abilities")
+def get_pokemon_abilities(
+        pokedex_id: int,
+        q: Optional[str] = None,
         es_client: Elasticsearch = Depends(get_es_client)
 ):
     """
-    Retorna tots els Pokémon ordenats per una estadística específica.
+    Retorna la llista d'habilitats (abilities) d'un Pokémon específic.
+    Si s'envia 'q', filtra les habilitats que continguin aquest text al nom.
     """
 
-    # --- Validació de Paràmetres ---
-    stat_key = STAT_MAPPING.get(stat.lower())
-    if not stat_key:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Paràmetre 'stat' invàlid. Prova amb un de: {', '.join(STAT_MAPPING.keys())}"
-        )
-
-    order_direction = order.lower()
-    if order_direction not in ["asc", "desc"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Paràmetre 'order' invàlid. Ha de ser 'asc' o 'desc'."
-        )
-
-    elastic_stat_field = f"stats.{stat_key}"
-
-    # --- Construcció de la Consulta ---
+    # 1. Primer busquem el Pokémon a Elasticsearch pel seu ID
     query = {
         "query": {
-            "match_all": {}
-        },
-        "sort": [
-            {
-                elastic_stat_field: {
-                    "order": order_direction
-                }
+            "term": {
+                "pokedex_id": pokedex_id
             }
-        ],
-        "size": 200
+        }
     }
 
-    # --- Execució i Resposta ---
     response = es_client.search(index="pokemon", body=query)
+
+    # Si no trobem el Pokémon, retornem error 404
+    if response['hits']['total']['value'] == 0:
+        raise HTTPException(status_code=404, detail="Pokémon no trobat")
+
+    # 2. Extraiem la llista completa d'habilitats del document
+    pokemon_data = response['hits']['hits'][0]['_source']
+    abilities_list = pokemon_data.get("abilities", [])
+
+    # 3. Si hi ha un terme de cerca 'q', filtrem la llista amb Python
+    if q:
+        q = q.lower()
+        # Filtrem: Guardem l'habilitat si el terme de cerca està DINS del nom
+        filtered_abilities = [
+            ability for ability in abilities_list
+            if q in ability['name'].lower()
+        ]
+        return filtered_abilities
+
+    # Si no hi ha cerca, retornem totes les habilitats
+    return abilities_list
+
+# Endpoint: Cercador de Moviments
+# **** AQUEST TAMBÉ HA D'ANAR ABANS DE .../{pokedex_id} ****
+@app.get("/api/v1/pokemon/{pokedex_id}/moves")
+def get_pokemon_moves(
+        pokedex_id: int,
+        q: Optional[str] = None,
+        es_client: Elasticsearch = Depends(get_es_client)
+):
+    """
+    Retorna la llista de moviments (moves_pool) d'un Pokémon específic.
+    Si s'envia 'q', filtra els moviments que continguin aquest text al nom.
+    """
+
+    # 1. Primer busquem el Pokémon a Elasticsearch pel seu ID
+    query = {
+        "query": {
+            "term": {
+                "pokedex_id": pokedex_id
+            }
+        }
+    }
+
+    response = es_client.search(index="pokemon", body=query)
+
+    # Si no trobem el Pokémon, retornem error 404
+    if response['hits']['total']['value'] == 0:
+        raise HTTPException(status_code=404, detail="Pokémon no trobat")
+
+    # 2. Extraiem la llista completa de moviments del document
+    pokemon_data = response['hits']['hits'][0]['_source']
+    moves_pool = pokemon_data.get("moves_pool", [])
+
+    # 3. Si hi ha un terme de cerca 'q', filtrem la llista amb Python
+    if q:
+        q = q.lower()
+        # Filtrem: Guardem el moviment si el terme de cerca està DINS del nom del moviment
+        filtered_moves = [
+            move for move in moves_pool
+            if q in move['name'].lower()
+        ]
+        return filtered_moves
+
+    # Si no hi ha cerca, retornem tots els moviments
+    return moves_pool
+
+# --- NOU ENDPOINT: Cercador d'Objectes (Items) ---
+@app.get("/api/v1/items/search")
+def search_items_by_name(q: str, es_client: Elasticsearch = Depends(get_es_client)):
+    """
+    Busca objectes (items) pel seu nom a l'índex 'items'.
+    """
+    # Consulta prefix al camp 'name' de l'índex 'items'
+    # Nota: Si tens 'name.keyword' a items, fes servir aquest. Si no, 'name' sol funcionar.
+    query = {
+        "query": {
+            "prefix": {
+                "name": {
+                    "value": q.lower()
+                }
+            }
+        }
+    }
+
+    response = es_client.search(index="items", body=query)
+
     results = []
     for hit in response['hits']['hits']:
-        pokemon = hit['_source']
+        item = hit['_source']
         results.append({
-            "pokedex_id": pokemon.get("pokedex_id"),
-            "name": pokemon.get("name", "N/A").capitalize(),
-            "types": pokemon.get("types"),
-            "sprite_url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pokemon.get('pokedex_id')}.png",
-            "stats": pokemon.get("stats")
+            "item_id": item.get("item_id"),
+            "name": item.get("name", "N/A"),
+            "category": item.get("category"),
+            "cost": item.get("cost"),
+            "effect": item.get("effect"),
+            # Generem la URL de la imatge fent servir el nom de l'objecte (estàndard PokeAPI)
+            "sprite_url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/{item.get('name')}.png"
         })
+
     return results
 
 # Endpoint 3.2: Obtenir detalls d'un Pokémon
