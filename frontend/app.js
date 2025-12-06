@@ -115,7 +115,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     // 3. Modificar funció d'obrir modal
-    const openSearch = index => {
+    const openSearch = async index => {
         editingIndex = index;
 
         // Resetegem filtres visuals
@@ -128,11 +128,31 @@ document.addEventListener("DOMContentLoaded", async () => {
             filterName: "",
             filterTypes: [],
             // NO T'OBLIDIS D'AQUESTA LÍNIA:
-            minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
+            minStats: {hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0},
             sortKey: "id",
             sortAsc: true
         };
         updateTypeButtonText(); // Reset del text del botó
+
+        // --- BLOC DE CÀRREGA ---
+        // 1. Mostrem el spinner
+        if (loadingSpinner) loadingSpinner.classList.remove("hidden");
+
+        try {
+            // 2. Fem la càrrega (això triga uns segons)
+            mockPokemonData = await fetchAllPokemons();
+
+            // 3. Renderitzem la taula quan tenim dades
+            renderTable();
+
+        } catch (e) {
+            alert("Error carregant dades del servidor.");
+            console.error(e);
+        } finally {
+            // 4. SEMPRE amaguem el spinner al final (tant si va bé com si falla)
+            if (loadingSpinner) loadingSpinner.classList.add("hidden");
+        }
+        // -----------------------
 
         renderTable();
         searchModal.style.display = "block";
@@ -154,6 +174,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   /* ============================================================
      ELEMENTS DEL DOM
      ============================================================ */
+  //Loading
+  const loadingSpinner = document.getElementById("loading-spinner");
   // Equip i Carrusel
   const teamGrid       = document.getElementById("team-grid");
   const carouselInner  = document.getElementById("carousel-inner");
