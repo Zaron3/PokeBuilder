@@ -11,6 +11,7 @@ DELETE /types?ignore_unavailable=true
 DELETE /items?ignore_unavailable=true
 DELETE /abilities?ignore_unavailable=true
 DELETE /natures?ignore_unavailable=true
+DELETE /users?ignore_unavailable=true
 
 // 2. CREEM L'ÍNDEX `pokemon`
 PUT /pokemon
@@ -195,6 +196,54 @@ PUT /natures
 "decreased_stat": { "type": "keyword" },
 "likes_flavor": { "type": "keyword" },
 "hates_flavor": { "type": "keyword" }
+}
+}
+}
+
+// 9. CREEM L'ÍNDEX `users` (Usuaris del sistema)
+PUT /users
+{
+"mappings": {
+"properties": {
+"user_id": { 
+"type": "integer"
+},
+"username": {
+"type": "text",
+"fields": {
+"keyword": { "type": "keyword" }
+}
+},
+"email": { 
+"type": "keyword"
+},
+"password_hash": { 
+"type": "keyword"
+},
+"created_at": { 
+"type": "date"
+},
+"updated_at": { 
+"type": "date"
+},
+"is_active": { 
+"type": "boolean"
+},
+"profile": {
+"properties": {
+"full_name": { "type": "text" },
+"avatar_url": { "type": "keyword" },
+"bio": { "type": "text" },
+"favorite_pokemon": { "type": "keyword" }
+}
+},
+"preferences": {
+"properties": {
+"default_format": { "type": "keyword" },
+"language": { "type": "keyword" },
+"theme": { "type": "keyword" }
+}
+}
 }
 }
 }

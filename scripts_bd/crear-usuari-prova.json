@@ -1,0 +1,84 @@
+// ===============================================
+// EXEMPLE DE CREACIÓ D'USUARI VIA KIBANA
+// ===============================================
+// Copia i enganxa aquestes comandes a Kibana Dev Tools
+
+// Exemple 1: Crear un usuari bàsic
+POST /users/_doc/1
+{
+  "user_id": 1,
+  "username": "jordi_bolance",
+  "email": "jordi@example.com",
+  "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqBWVHxkd0",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z",
+  "is_active": true,
+  "profile": {
+    "full_name": "Jordi Bolance",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "bio": "Entusiasta de Pokémon competitivo",
+    "favorite_pokemon": "pikachu"
+  },
+  "preferences": {
+    "default_format": "vgc",
+    "language": "ca",
+    "theme": "dark"
+  }
+}
+
+// Exemple 2: Crear un usuari mínim (sense perfil ni preferències)
+POST /users/_doc/2
+{
+  "user_id": 2,
+  "username": "trainer_ash",
+  "email": "ash@pokemon.com",
+  "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqBWVHxkd0",
+  "created_at": "2024-01-16T08:00:00Z",
+  "updated_at": "2024-01-16T08:00:00Z",
+  "is_active": true
+}
+
+// Exemple 3: Crear un usuari amb perfil complet
+POST /users/_doc/3
+{
+  "user_id": 3,
+  "username": "pokemon_master",
+  "email": "master@pokemon.com",
+  "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqBWVHxkd0",
+  "created_at": "2024-01-17T12:00:00Z",
+  "updated_at": "2024-01-17T12:00:00Z",
+  "is_active": true,
+  "profile": {
+    "full_name": "Pokémon Master",
+    "avatar_url": "https://example.com/master.jpg",
+    "bio": "Creador d'equips competitius des de 2010",
+    "favorite_pokemon": "charizard"
+  },
+  "preferences": {
+    "default_format": "smogon",
+    "language": "es",
+    "theme": "light"
+  }
+}
+
+// ===============================================
+// NOTES IMPORTANTS:
+// ===============================================
+// 1. password_hash: Mai guardis contrasenyes en text pla!
+//    Utilitza una llibreria com bcrypt per generar el hash.
+//    Exemple en Python:
+//      import bcrypt
+//      password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+//
+// 2. user_id: És un número enter (integer) que identifica únicament l'usuari.
+//    Pots utilitzar un sistema d'auto-increment o generar IDs numèrics únics.
+//
+// 3. created_at i updated_at: Utilitza el format ISO 8601 (YYYY-MM-DDTHH:MM:SSZ)
+//
+// 4. Per obtenir la data actual en Kibana, pots utilitzar:
+//    "created_at": "now"
+//
+// 5. Per actualitzar un usuari existent, utilitza PUT en lloc de POST:
+//    PUT /users/_doc/1
+//    { ... }
+

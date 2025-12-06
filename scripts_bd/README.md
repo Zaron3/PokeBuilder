@@ -5,7 +5,7 @@ Aquest directori conté els scripts necessaris per configurar i poblar la base d
 ## Estructura de Fitxers
 
 ### Configuració d'Índexs
-- **`crear-indexs.json`**: Script per crear tots els índexs d'Elasticsearch (pokemon, moves, teams, types)
+- **`crear-indexs.json`**: Script per crear tots els índexs d'Elasticsearch (pokemon, moves, teams, types, items, abilities, natures, users)
 
 ### Scripts d'Ingesta
 - **`ingesta_completa.py`**: ⭐ **Script intel·ligent** que executa només els scripts necessaris (verifica quins índexs tenen dades)
@@ -15,12 +15,15 @@ Aquest directori conté els scripts necessaris per configurar i poblar la base d
 - **`ingesta_items.py`**: Importa tots els items/objectes de Pokémon des de PokéAPI a Elasticsearch
 - **`ingesta_abilities.py`**: Importa totes les habilitats de Pokémon des de PokéAPI a Elasticsearch
 - **`ingesta_natures.py`**: Importa totes les naturalezas de Pokémon des de PokéAPI a Elasticsearch
+- **`ingesta_usuarios.py`**: Crea els usuaris predefinits a la base de dades (jordi_bolance, jordi_barnola, pol_torrent, jordi_roura, marc_cassanmagnago)
+- **`ingesta_teams.py`**: Crea equips predefinits per als usuaris 1 i 2 (2 equips per usuari)
 - **`marcar_pokemon_prohibits.py`**: Marca els Pokémon prohibits en competitivo (llegendaris, míticos, etc.)
 
 ### Dades de Prova
 - **`llista-pokemon-prova.json`**: Exemples de Pokémon per a proves
 - **`llista-tipus-prova.json`**: Exemples de tipus amb relacions d'efectivitat per a proves
 - **`crear-equip-prova.json`**: Exemple d'equip complet per a proves
+- **`crear-usuari-prova.json`**: Exemples de com crear usuaris via Kibana Dev Tools
 
 ## Ús
 
@@ -36,7 +39,8 @@ Aquest script:
 - ✅ Verifica quins índexs tenen dades suficients
 - ✅ Només executa els scripts d'ingesta necessaris
 - ✅ Evita reimportar dades que ja existeixen
-- ✅ Demana confirmació abans d'executar
+- ✅ Crea automàticament usuaris si no n'hi ha cap
+- ✅ Crea automàticament equips si no n'hi ha cap
 - ✅ Mostra un resum final de l'estat de tots els índexs
 
 **Exemple d'ús:**
@@ -158,7 +162,46 @@ Aquest script:
 
 **Nota:** Pots modificar la llista `pokemon_ids_prohibits` al script segons les regles del format que utilitzis (VGC, Smogon, etc.).
 
-### 9. Dades de Prova
+### 9. Crear Usuaris Predefinits
+
+Executa l'script per crear els usuaris predefinits:
+
+```bash
+python ingesta_usuarios.py
+```
+
+Aquest script crea 5 usuaris predefinits:
+- **jordi_bolance** (user_id: 1)
+- **jordi_barnola** (user_id: 2)
+- **pol_torrent** (user_id: 3)
+- **jordi_roura** (user_id: 4)
+- **marc_cassanmagnago** (user_id: 5)
+
+Si un usuari ja existeix (per `user_id` o `username`), l'script l'actualitzarà en lloc de crear-lo de nou.
+
+**Nota:** L'script `ingesta_completa.py` executarà automàticament aquest script si detecta que no hi ha cap usuari a la base de dades.
+
+### 10. Crear Equips Predefinits
+
+Executa l'script per crear els equips predefinits:
+
+```bash
+python ingesta_teams.py
+```
+
+Aquest script crea 4 equips predefinits:
+- **2 equips per a l'usuari 1 (jordi_bolance)**:
+  - "Equip de Sol VGC" - Equip VGC basat en Sol (6 Pokémon)
+  - "Equip Offensiu OU" - Equip ofensiu per a Smogon OU (3 Pokémon)
+- **2 equips per a l'usuari 2 (jordi_barnola)**:
+  - "Equip Balance VGC" - Equip balancejat per a VGC Reg G (6 Pokémon)
+  - "Equip Rain OU" - Equip basat en pluja per a Smogon OU (3 Pokémon)
+
+Si un equip ja existeix (per `team_name` i `user_id`), l'script l'actualitzarà en lloc de crear-lo de nou.
+
+**Nota:** L'script `ingesta_completa.py` executarà automàticament aquest script si detecta que no hi ha cap equip a la base de dades.
+
+### 11. Dades de Prova
 
 Pots utilitzar els fitxers JSON de prova per inserir dades d'exemple directament a Elasticsearch utilitzant l'API REST o Kibana Dev Tools.
 
@@ -401,4 +444,187 @@ GET /natures/_search
   }
 }
 ```
+
+## Estructura de l'Índex `users`
+
+L'índex `users` conté la informació de tots els usuaris registrats al sistema:
+
+- **`user_id`**: ID únic de l'usuari (integer)
+- **`username`**: Nom d'usuari (text amb keyword per a cerques exactes)
+- **`email`**: Adreça de correu electrònic (keyword, únic)
+- **`password_hash`**: Hash de la contrasenya (keyword, mai guardar contrasenyes en text pla)
+- **`created_at`**: Data de creació del compte (date)
+- **`updated_at`**: Data de última actualització (date)
+- **`is_active`**: Indica si el compte està actiu (boolean)
+- **`profile`**: Objecte amb informació del perfil:
+  - `full_name`: Nom complet de l'usuari (text)
+  - `avatar_url`: URL de l'avatar (keyword)
+  - `bio`: Biografia de l'usuari (text)
+  - `favorite_pokemon`: Pokémon favorit de l'usuari (keyword)
+- **`preferences`**: Objecte amb preferències de l'usuari:
+  - `default_format`: Format per defecte (ex: "vgc", "smogon") (keyword)
+  - `language`: Idioma preferit (keyword)
+  - `theme`: Tema de la interfície (keyword)
+
+**Nota:** Els usuaris es creen dinàmicament quan es registren al sistema. També pots utilitzar l'script `ingesta_usuarios.py` per crear els usuaris predefinits (jordi_bolance, jordi_barnola, pol_torrent, jordi_roura, marc_cassanmagnago). L'script `ingesta_completa.py` executarà automàticament aquest script si no troba cap usuari a la base de dades.
+
+### Crear Usuaris via Kibana
+
+Pots crear usuaris directament des de **Kibana Dev Tools** utilitzant les comandes del fitxer `crear-usuari-prova.json`.
+
+**Pasos:**
+
+1. Obre Kibana i ves a **Dev Tools** (des del menú lateral)
+2. Copia i enganxa una de les comandes del fitxer `crear-usuari-prova.json`
+3. Clica el botó **▶** per executar la comanda
+
+**Exemple bàsic:**
+
+```json
+POST /users/_doc/1
+{
+  "user_id": 1,
+  "username": "jordi_bolance",
+  "email": "jordi@example.com",
+  "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqBWVHxkd0",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z",
+  "is_active": true
+}
+```
+
+**⚠️ Important sobre contrasenyes:**
+
+Mai guardis contrasenyes en text pla! Sempre utilitza un hash. Per generar un hash de contrasenya en Python:
+
+```python
+import bcrypt
+
+password = "mi_contraseña_segura"
+password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+print(password_hash)
+```
+
+També pots utilitzar la data actual automàticament:
+
+```json
+POST /users/_doc/1
+{
+  "user_id": 1,
+  "username": "jordi_bolance",
+  "email": "jordi@example.com",
+  "password_hash": "$2b$12$...",
+  "created_at": "now",
+  "updated_at": "now",
+  "is_active": true
+}
+```
+
+### Exemples de Consultes per Usuaris
+
+### Obtenir tots els usuaris
+```
+GET /users/_search
+```
+
+### Buscar un usuari per nom d'usuari
+```
+GET /users/_search
+{
+  "query": {
+    "term": {
+      "username.keyword": "jordi_bolance"
+    }
+  }
+}
+```
+
+### Buscar un usuari per email
+```
+GET /users/_search
+{
+  "query": {
+    "term": {
+      "email": "jordi@example.com"
+    }
+  }
+}
+```
+
+### Buscar usuaris actius
+```
+GET /users/_search
+{
+  "query": {
+    "term": {
+      "is_active": true
+    }
+  }
+}
+```
+
+### Buscar usuaris amb un Pokémon favorit específic
+```
+GET /users/_search
+{
+  "query": {
+    "term": {
+      "profile.favorite_pokemon": "pikachu"
+    }
+  }
+}
+```
+
+### Eliminar un usuari
+
+Per eliminar un usuari, necessites conèixer el seu ID del document (el que vas utilitzar quan el vas crear, per exemple `1`, `2`, `3`, etc.).
+
+**Opció 1: Eliminar per ID del document (recomanat)**
+
+```json
+DELETE /users/_doc/1
+```
+
+Això elimina l'usuari amb ID de document `1`.
+
+**Opció 2: Eliminar per user_id (si coneixes el user_id però no l'ID del document)**
+
+Primer busca l'ID del document:
+
+```json
+GET /users/_search
+{
+  "query": {
+    "term": {
+      "user_id": 1
+    }
+  }
+}
+```
+
+Després, utilitza l'`_id` que apareix a la resposta per eliminar-lo:
+
+```json
+DELETE /users/_doc/[ID_DEL_DOCUMENT]
+```
+
+**Opció 3: Eliminar múltiples usuaris amb una consulta**
+
+```json
+POST /users/_delete_by_query
+{
+  "query": {
+    "term": {
+      "user_id": 1
+    }
+  }
+}
+```
+
+Això elimina tots els usuaris que tinguin `user_id` igual a `1`.
+
+**⚠️ Important:**
+- L'operació DELETE és permanent i no es pot desfer
+- Si l'usuari té equips associats, considera eliminar-los primer o actualitzar-los
+- Després d'eliminar, el document desapareix immediatament de l'índex
 

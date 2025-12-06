@@ -11,6 +11,8 @@ La base de datos Elasticsearch contiene los siguientes índices:
 | `moves` | Movimientos de Pokémon | **937** |
 | `items` | Objetos/Items de Pokémon | **2,180** |
 | `abilities` | Habilidades de Pokémon | **367** |
+| `natures` | Naturalezas de Pokémon | **25** |
+| `users` | Usuarios registrados en el sistema | **5** (variable) |
 | `teams` | Equipos creados por usuarios | **0** (variable) |
 
 ---
@@ -208,6 +210,48 @@ Contiene información de todas las habilidades de Pokémon.
 
 ---
 
+## 🌿 Índice: `natures`
+
+### Descripción
+Contiene información de todas las naturalezas de Pokémon que afectan el crecimiento de las estadísticas.
+
+### Campos Principales
+
+- **`nature_id`** (integer): ID numérico de la naturalesa
+- **`name`** (text/keyword): Nombre de la naturalesa (ej: "adamant", "modest", "jolly")
+- **`increased_stat`** (keyword): Estadística que aumenta en un 10% (ej: "attack", "special-attack", null para neutral)
+- **`decreased_stat`** (keyword): Estadística que disminuye en un 10% (ej: "special-attack", "attack", null para neutral)
+- **`likes_flavor`** (keyword): Sabor de baya que le gusta (ej: "spicy", "dry", "sweet", "bitter", "sour")
+- **`hates_flavor`** (keyword): Sabor de baya que odia (ej: "spicy", "dry", "sweet", "bitter", "sour")
+
+**Nota:** Las naturalezas neutras (como "Hardy", "Docile", etc.) no aumentan ni disminuyen ninguna estadística (`increased_stat` y `decreased_stat` son `null`).
+
+### Ejemplo de Documento
+```json
+{
+  "nature_id": 2,
+  "name": "adamant",
+  "increased_stat": "attack",
+  "decreased_stat": "special-attack",
+  "likes_flavor": "spicy",
+  "hates_flavor": "dry"
+}
+```
+
+### Ejemplo de Naturalesa Neutral
+```json
+{
+  "nature_id": 1,
+  "name": "hardy",
+  "increased_stat": null,
+  "decreased_stat": null,
+  "likes_flavor": null,
+  "hates_flavor": null
+}
+```
+
+---
+
 ## 👥 Índice: `teams`
 
 ### Descripción
@@ -218,7 +262,7 @@ Contiene los equipos de Pokémon creados por los usuarios.
 #### Información del Equipo
 - **`team_name`** (text/keyword): Nombre del equipo
 - **`description`** (text): Descripción del equipo
-- **`user_id`** (keyword): ID del usuario que creó el equipo
+- **`user_id`** (keyword): ID del usuario que creó el equipo (referencia al índice `users`)
 - **`format`** (keyword): Formato competitivo (ej: "VGC Reg G", "OU", "Ubers")
 
 #### Miembros del Equipo
@@ -269,6 +313,69 @@ Contiene los equipos de Pokémon creados por los usuarios.
 
 ---
 
+## 👤 Índice: `users`
+
+### Descripción
+Contiene la información de todos los usuarios registrados en el sistema.
+
+### Campos Principales
+
+#### Información Básica
+- **`user_id`** (integer): ID único numérico del usuario
+- **`username`** (text/keyword): Nombre de usuario (ej: "jordi_bolance")
+- **`email`** (keyword): Dirección de correo electrónico (único)
+- **`password_hash`** (keyword): Hash de la contraseña (nunca en texto plano)
+- **`created_at`** (date): Fecha de creación del cuenta
+- **`updated_at`** (date): Fecha de última actualización
+- **`is_active`** (boolean): Indica si el cuenta está activo
+
+#### Perfil del Usuario
+- **`profile`** (object): Objeto con información del perfil:
+  - `full_name` (text): Nombre completo del usuario
+  - `avatar_url` (keyword): URL del avatar
+  - `bio` (text): Biografía del usuario
+  - `favorite_pokemon` (keyword): Pokémon favorito del usuario
+
+#### Preferencias
+- **`preferences`** (object): Objeto con preferencias del usuario:
+  - `default_format` (keyword): Formato por defecto (ej: "vgc", "smogon")
+  - `language` (keyword): Idioma preferido (ej: "ca", "es", "en")
+  - `theme` (keyword): Tema de la interfaz (ej: "dark", "light")
+
+### Ejemplo de Documento
+```json
+{
+  "user_id": 1,
+  "username": "jordi_bolance",
+  "email": "jordi.bolance@example.com",
+  "password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqBWVHxkd0",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z",
+  "is_active": true,
+  "profile": {
+    "full_name": "Jordi Bolance",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "bio": "Entusiasta de Pokémon competitivo",
+    "favorite_pokemon": "pikachu"
+  },
+  "preferences": {
+    "default_format": "vgc",
+    "language": "ca",
+    "theme": "dark"
+  }
+}
+```
+
+### Usuarios Predefinidos
+El sistema incluye 5 usuarios predefinidos que se pueden crear ejecutando `ingesta_usuarios.py`:
+- `jordi_bolance` (user_id: 1)
+- `jordi_barnola` (user_id: 2)
+- `pol_torrent` (user_id: 3)
+- `jordi_roura` (user_id: 4)
+- `marc_cassanmagnago` (user_id: 5)
+
+---
+
 ## 📈 Estadísticas Generales
 
 ### Total de Documentos por Índice
@@ -278,10 +385,12 @@ Contiene los equipos de Pokémon creados por los usuarios.
 - **Movimientos**: **937** documentos
 - **Items**: **2,180** documentos
 - **Habilidades**: **367** documentos
+- **Naturalezas**: **25** documentos
+- **Usuarios**: **5** documentos (se pueden crear más dinámicamente)
 - **Equipos**: **0** documentos (se crean dinámicamente)
 
 ### Total Real
-**4,529 documentos** en total
+**4,559 documentos** en total (sin contar equipos que son variables)
 
 ---
 
@@ -294,6 +403,8 @@ GET /types/_count
 GET /moves/_count
 GET /items/_count
 GET /abilities/_count
+GET /natures/_count
+GET /users/_count
 GET /teams/_count
 ```
 
@@ -307,6 +418,7 @@ GET /_cat/indices?v
 GET /pokemon/_doc/25
 GET /types/_doc/10
 GET /moves/_doc/85
+GET /users/_doc/1
 ```
 
 ---
@@ -317,8 +429,9 @@ GET /moves/_doc/85
 
 2. **Relaciones**: 
    - Los Pokémon tienen referencias a tipos, habilidades y movimientos por nombre
-   - Los equipos referencian Pokémon por nombre base
-   - No hay claves foráneas explícitas, se usa búsqueda por nombre
+   - Los equipos referencian usuarios por `user_id` (integer) y Pokémon por nombre base
+   - Los usuarios pueden tener múltiples equipos asociados
+   - No hay claves foráneas explícitas, se usa búsqueda por nombre o ID
 
 3. **Actualización**: Los datos se pueden actualizar ejecutando los scripts de ingesta correspondientes.
 

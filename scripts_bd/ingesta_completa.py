@@ -159,6 +159,42 @@ def main():
         print("="*60)
         print("\nNo cal executar cap script d'ingesta.")
     
+    # Verificar si cal crear usuaris (si no n'hi ha cap)
+    users_count = comptar_documents("users")
+    if users_count == 0:
+        print("\n" + "="*60)
+        print("VERIFICANT USUARIS...")
+        print("="*60)
+        print(f"Detectat: {users_count} usuaris a la base de dades.")
+        print("Executant script per crear usuaris predefinits...\n")
+        
+        if executar_script("ingesta_usuarios.py"):
+            exitosos += 1
+            print("✓ Usuaris creats correctament")
+        else:
+            fallits += 1
+            print("⚠ Error al crear usuaris")
+    else:
+        print(f"\n✓ Usuaris ja existeixen a la base de dades ({users_count} usuaris trobats)")
+    
+    # Verificar si cal crear equips (si no n'hi ha cap)
+    teams_count = comptar_documents("teams")
+    if teams_count == 0:
+        print("\n" + "="*60)
+        print("VERIFICANT EQUIPS...")
+        print("="*60)
+        print(f"Detectat: {teams_count} equips a la base de dades.")
+        print("Executant script per crear equips predefinits...\n")
+        
+        if executar_script("ingesta_teams.py"):
+            exitosos += 1
+            print("✓ Equips creats correctament")
+        else:
+            fallits += 1
+            print("⚠ Error al crear equips")
+    else:
+        print(f"\n✓ Equips ja existeixen a la base de dades ({teams_count} equips trobats)")
+    
     # Sempre verificar si cal marcar Pokémon prohibits (independentment de si s'han importat índexs)
     pokemon_count = comptar_documents("pokemon")
     if pokemon_count > 0:
@@ -233,6 +269,15 @@ def main():
         limit_minim = LIMITS_MINIMS.get(index_name, 0)
         status = "✓" if count >= limit_minim else "⚠"
         print(f"  {status} {index_name:12} : {count:>5} documents")
+    
+    # Mostrar també usuaris i equips
+    users_count = comptar_documents("users")
+    status_users = "✓" if users_count > 0 else "⚠"
+    print(f"  {status_users} {'users':12} : {users_count:>5} documents")
+    
+    teams_count = comptar_documents("teams")
+    status_teams = "✓" if teams_count > 0 else "⚠"
+    print(f"  {status_teams} {'teams':12} : {teams_count:>5} documents")
     
     print("\n" + "="*60)
 
