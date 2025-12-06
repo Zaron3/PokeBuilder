@@ -72,78 +72,162 @@ def get_es_client():
 def ruta_arrel():
     return {"missatge": "El servidor FastAPI del PokeBuilder funciona!"}
 
-# --- ENDPOINT UNIFICAT: Cerca i Ordenació ---
+# --- ENDPOINT UNIFICAT: Cerca, Ordenació i Filtre per Tipus ---
 @app.get("/api/v1/pokemon/search")
 def search_pokemon(
-        q: str = None,          # Opcional: text per buscar (nom)
-        stat: str = None,       # Opcional: estadística per ordenar
+        q: str = None,          # Opcional: text per buscar (nom o ID)
+        stat: str = None,       # Opcional: estadística, 'id' o 'nom' per ordenar
         order: str = "desc",    # Opcional: direcció (asc/desc)
-        types: List[str] = Query(None), # Opcional: Llista de tipus (ex: ?types=fire&types=water)
+        types: List[str] = Query(None), # Opcional: Llista de tipus
+
+        # --- Filtres d'Estadístiques (Min/Max) ---
+        hp_min: int = None, hp_max: int = None,
+        attack_min: int = None, attack_max: int = None,
+        defense_min: int = None, defense_max: int = None,
+        special_attack_min: int = None, special_attack_max: int = None,
+        special_defense_min: int = None, special_defense_max: int = None,
+        speed_min: int = None, speed_max: int = None,
+
+        # --- Filtre de Banejats ---
+        exclude_banned: bool = Query(False), # Si és True, amaga els banejats
+
         es_client: Elasticsearch = Depends(get_es_client)
 ):
     """
-    Endpoint Unificat: Permet buscar per nom, filtrar per tipus i ordenar per estadística.
-
-    Exemple d'ús:
-    - /api/v1/pokemon/search?types=fire&types=flying (Torna Charizard, etc.)
-    - /api/v1/pokemon/search?q=pika&types=electric (Torna Pikachu)
+    Endpoint Unificat:
+    - Cerca per nom o ID (autocompletar).
+    - Filtre per tipus (paràmetre 'types').
+    - Filtre per rang d'estadístiques (hp_min, speed_max, etc.).
+    - Filtre per banejats (exclude_banned=True).
+    - Ordenació per stats, id o nom (paràmetre 'stat').
     """
 
     # Construïm una consulta "bool" que permet combinar condicions
     must_clauses = []
     filter_clauses = []
 
-    # 1. Cerca per text (si n'hi ha) -> Va al 'must'
+    # 1. Cerca per text o ID (q) -> Va al 'must'
     if q:
-        must_clauses.append({
+        should_conditions = []
+
+        # A. Cerca per prefix del nom (Sempre)
+        should_conditions.append({
             "prefix": {
                 "name.keyword": {
                     "value": q.lower()
                 }
             }
         })
+
+        # B. Cerca per ID (Autocompletar numèric)
+        if q.isdigit():
+            # Fem servir un script per convertir l'ID a string i comprovar si comença pel número
+            should_conditions.append({
+                "script": {
+                    "script": {
+                        "source": "doc['pokedex_id'].value.toString().startsWith(params.prefix)",
+                        "params": {"prefix": q}
+                    }
+                }
+            })
+
+        # Afegim la condició: Ha de complir A o B
+        must_clauses.append({
+            "bool": {
+                "should": should_conditions,
+                "minimum_should_match": 1
+            }
+        })
     else:
-        # Si no hi ha text ni filtres, volem tots els resultats.
+        # Si no hi ha text, ni filtres de tipus, ni filtres d'stats, ni filtre de banejats, volem tots.
         # Però si hi ha filtres, el 'match_all' és implícit.
-        if not types:
+        has_stats_filters = any([
+            hp_min, hp_max, attack_min, attack_max, defense_min, defense_max,
+            special_attack_min, special_attack_max, special_defense_min, special_defense_max,
+            speed_min, speed_max
+        ])
+
+        if not types and not has_stats_filters and not exclude_banned:
             must_clauses.append({"match_all": {}})
 
     # 2. Filtre per Tipus (si n'hi ha) -> Va al 'filter'
     if types:
-        # Normalitzem a minúscules per si de cas
         types_lower = [t.lower() for t in types]
-        # La consulta 'terms' funciona com un OR:
-        # Busca documents on el camp 'types' contingui ALMENYS UN dels valors de la llista.
         filter_clauses.append({
             "terms": {
                 "types": types_lower
             }
         })
 
-    # 3. Construir l'ordenació (Sort)
+    # 3. Filtre per Banejats (NOU) -> Va al 'filter'
+    if exclude_banned:
+        filter_clauses.append({
+            "term": {
+                "is_banned": False  # Només volem els que NO estan banejats
+            }
+        })
+
+    # 4. Filtres per Rang d'Estadístiques -> Va al 'filter'
+    # Creem una llista amb la configuració de cada filtre
+    stats_configs = [
+        ("stats.hp", hp_min, hp_max),
+        ("stats.attack", attack_min, attack_max),
+        ("stats.defense", defense_min, defense_max),
+        ("stats.special_attack", special_attack_min, special_attack_max),
+        ("stats.special_defense", special_defense_min, special_defense_max),
+        ("stats.speed", speed_min, speed_max)
+    ]
+
+    for field, min_val, max_val in stats_configs:
+        if min_val is not None or max_val is not None:
+            range_query = {}
+            if min_val is not None:
+                range_query["gte"] = min_val # Greater than or equal (Major o igual)
+            if max_val is not None:
+                range_query["lte"] = max_val # Less than or equal (Menor o igual)
+
+            filter_clauses.append({
+                "range": {
+                    field: range_query
+                }
+            })
+
+    # 5. Construir l'ordenació (Sort)
     sort_criteria = []
 
     if stat:
-        # Si s'ha demanat una estadística concreta, validem i ordenem per ella
-        stat_key = STAT_MAPPING.get(stat.lower())
-        if not stat_key:
+        stat_lower = stat.lower()
+        elastic_stat_field = None
+
+        # Comprovem si vol ordenar per ID o Nom
+        if stat_lower in ["id", "pokedex_id", "numero"]:
+            elastic_stat_field = "pokedex_id"
+        elif stat_lower in ["nom", "name", "nombre"]:
+            elastic_stat_field = "name.keyword"
+        else:
+            # Si no és ID ni Nom, mirem si és una estadística de combat
+            stat_key = STAT_MAPPING.get(stat_lower)
+            if stat_key:
+                elastic_stat_field = f"stats.{stat_key}"
+
+        # Si després de tot això no tenim camp, l'stat no és vàlid
+        if not elastic_stat_field:
             raise HTTPException(
                 status_code=400,
-                detail=f"Paràmetre 'stat' invàlid. Prova amb un de: {', '.join(STAT_MAPPING.keys())}"
+                detail=f"Paràmetre 'stat' invàlid. Prova amb: id, nom, {', '.join(STAT_MAPPING.keys())}"
             )
 
         # Validar l'ordre
         if order.lower() not in ["asc", "desc"]:
             raise HTTPException(status_code=400, detail="L'ordre ha de ser 'asc' o 'desc'")
 
-        # Afegim el criteri d'ordenació per estadística
-        elastic_stat_field = f"stats.{stat_key}"
+        # Afegim el criteri d'ordenació
         sort_criteria.append({ elastic_stat_field: {"order": order.lower()} })
     else:
         # PER DEFECTE: Ordenem per ID (ascendent)
         sort_criteria.append({ "pokedex_id": {"order": "asc"} })
 
-    # 4. Muntar la consulta final completa
+    # 6. Muntar la consulta final completa
     query = {
         "query": {
             "bool": {
@@ -152,10 +236,10 @@ def search_pokemon(
             }
         },
         "sort": sort_criteria,
-        "size": 200 # Limitem a 200 resultats per pàgina
+        "size": 200
     }
 
-    # 5. Executar i Retornar
+    # 7. Executar i Retornar
     response = es_client.search(index="pokemon", body=query)
     results = []
     for hit in response['hits']['hits']:
@@ -165,12 +249,12 @@ def search_pokemon(
             "name": pokemon.get("name", "N/A").capitalize(),
             "types": pokemon.get("types"),
             "sprite_url": f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{pokemon.get('pokedex_id')}.png",
-            "stats": pokemon.get("stats")
+            "stats": pokemon.get("stats"),
+            "is_banned": pokemon.get("is_banned", False) # Retornem l'estat per si el frontend vol posar una icona 🚫
         })
     return results
 
 # Endpoint: Cercador d'Habilitats
-# **** AQUEST TAMBÉ HA D'ANAR ABANS DE .../{pokedex_id} ****
 @app.get("/api/v1/pokemon/{pokedex_id}/abilities")
 def get_pokemon_abilities(
         pokedex_id: int,
@@ -215,7 +299,6 @@ def get_pokemon_abilities(
     return abilities_list
 
 # Endpoint: Cercador de Moviments
-# **** AQUEST TAMBÉ HA D'ANAR ABANS DE .../{pokedex_id} ****
 @app.get("/api/v1/pokemon/{pokedex_id}/moves")
 def get_pokemon_moves(
         pokedex_id: int,
@@ -259,7 +342,7 @@ def get_pokemon_moves(
     # Si no hi ha cerca, retornem tots els moviments
     return moves_pool
 
-# --- NOU ENDPOINT: Cercador d'Objectes (Items) ---
+# Endpoint: Cercador d'Objectes (Items) ---
 @app.get("/api/v1/items/search")
 def search_items_by_name(q: str, es_client: Elasticsearch = Depends(get_es_client)):
     """
@@ -294,8 +377,36 @@ def search_items_by_name(q: str, es_client: Elasticsearch = Depends(get_es_clien
 
     return results
 
-# Endpoint 3.2: Obtenir detalls d'un Pokémon
-# **** AQUEST HA D'ANAR DESPRÉS DE .../sort ****
+# Endpoint: Equips d'un Usuari ---
+@app.get("/api/v1/teams/user/{user_id}")
+def get_user_teams(user_id: str, es_client: Elasticsearch = Depends(get_es_client)):
+    """
+    Retorna tots els equips creats per un usuari específic (filtrant per user_id).
+    """
+    query = {
+        "query": {
+            "term": {
+                "user_id": user_id # user_id és keyword, cerca exacta
+            }
+        }
+    }
+
+    try:
+        response = es_client.search(index="teams", body=query)
+    except Exception:
+        # Si l'índex no existeix o falla, retornem llista buida
+        return []
+
+    results = []
+    for hit in response['hits']['hits']:
+        team = hit['_source']
+        # És molt útil retornar també l'ID del document d'Elastic per poder editar/esborrar l'equip després
+        team['id'] = hit['_id']
+        results.append(team)
+
+    return results
+
+# Endpoint: Obtenir detalls d'un Pokémon
 @app.get("/api/v1/pokemon/{pokedex_id}")
 def get_pokemon_details(pokedex_id: int, es_client: Elasticsearch = Depends(get_es_client)):
     """
