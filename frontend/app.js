@@ -121,7 +121,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Resetegem filtres visuals
         filterIdInput.value = "";
         filterNameInput.value = "";
-        tableState = { filterId: "", filterName: "", sortKey: "id", sortAsc: true };
+        Object.values(filterStatsInputs).forEach(input => input.value = "");
+        // Resetegem l'estat intern COMPLET (incloent minStats)
+        tableState = {
+            filterId: "",
+            filterName: "",
+            filterTypes: [],
+            // NO T'OBLIDIS D'AQUESTA LÍNIA:
+            minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
+            sortKey: "id",
+            sortAsc: true
+        };
+        updateTypeButtonText(); // Reset del text del botó
 
         renderTable();
         searchModal.style.display = "block";
@@ -890,14 +901,113 @@ saveTeamBtn.addEventListener("click", () => {
 let tableState = {
     filterId: "",
     filterName: "",
+    filterTypes: [], // <-- CANVI: Ara és un array buit []
+    minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
     sortKey: "id", // Per defecte ordenat per ID
     sortAsc: true
 };
+
+    /* ============================================================
+         GESTIÓ DEL FILTRE DE TIPUS (POPUP)
+         ============================================================ */
+    const typeFilterBtn = document.getElementById("type-filter-btn");
+    const typePopup = document.getElementById("type-filter-popup");
+    const typeGridContainer = document.getElementById("type-grid-container");
+    const clearTypesBtn = document.getElementById("clear-types-btn");
+
+    // 1. Generar els botons de tipus
+    const renderTypeFilterOptions = () => {
+        typeGridContainer.innerHTML = "";
+
+        // Itere sobre tots els tipus disponibles (de la teva constant TYPE_RGB)
+        Object.keys(TYPE_RGB).forEach(type => {
+            const btn = document.createElement("div");
+            btn.className = "type-option";
+            btn.textContent = type;
+
+            // Si està seleccionat, li posem la classe active i el color
+            if (tableState.filterTypes.includes(type)) {
+                btn.classList.add("active");
+                const rgb = typeToRGB(type);
+                btn.style.backgroundColor = `rgb(${rgb})`;
+                btn.style.borderColor = `rgb(${rgb})`;
+            }
+
+            // Click per activar/desactivar
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation(); // Evita tancar el popup
+                toggleTypeFilter(type);
+            });
+
+            typeGridContainer.appendChild(btn);
+        });
+    };
+
+    // 2. Toggle (Activar/Desactivar un tipus)
+    const toggleTypeFilter = (type) => {
+        if (tableState.filterTypes.includes(type)) {
+            // Si ja hi és, el traiem
+            tableState.filterTypes = tableState.filterTypes.filter(t => t !== type);
+        } else {
+            // Si no hi és, l'afegim
+            tableState.filterTypes.push(type);
+        }
+
+        // Actualitzem visualment el botó principal
+        updateTypeButtonText();
+        // Actualitzem els colors de la graella
+        renderTypeFilterOptions();
+        // FILTREM LA TAULA!
+        renderTable();
+    };
+
+    const updateTypeButtonText = () => {
+        const count = tableState.filterTypes.length;
+        if (count === 0) {
+            typeFilterBtn.textContent = "Tots els tipus ▾";
+            typeFilterBtn.style.color = "";
+        } else {
+            typeFilterBtn.textContent = `${count} seleccionats ▾`;
+            typeFilterBtn.style.color = "#3b82f6";
+        }
+    };
+
+    // 3. Obrir/Tancar Popup
+    typeFilterBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        typePopup.classList.toggle("hidden");
+        renderTypeFilterOptions(); // Renderitzem al obrir per tenir l'estat correcte
+    });
+
+    // 4. Netejar Filtres
+    clearTypesBtn.addEventListener("click", () => {
+        tableState.filterTypes = [];
+        updateTypeButtonText();
+        renderTypeFilterOptions();
+        renderTable();
+    });
+
+    // Tancar si cliquem fora
+    document.addEventListener("click", (e) => {
+        if (!typePopup.contains(e.target) && e.target !== typeFilterBtn) {
+            typePopup.classList.add("hidden");
+        }
+    });
 
 // Elements
 const tableBody = document.getElementById("table-body");
 const filterIdInput = document.getElementById("filter-id");
 const filterNameInput = document.getElementById("filter-name");
+// Inputs d'Stats
+    const filterStatsInputs = {
+        hp: document.getElementById("filter-hp"),
+        attack: document.getElementById("filter-atk"),
+        defense: document.getElementById("filter-def"),
+        special_attack: document.getElementById("filter-spa"),
+        special_defense: document.getElementById("filter-spd"),
+        speed: document.getElementById("filter-spe")
+    };
+
 const resultsCount = document.getElementById("results-count");
 const sortHeaders = document.querySelectorAll(".sortable");
 
@@ -912,8 +1022,28 @@ const renderTable = () => {
         const matchId = tableState.filterId === "" || p.pokedex_id.toString().includes(tableState.filterId);
         // Filtre Nom (si n'hi ha)
         const matchName = tableState.filterName === "" || p.name.toLowerCase().includes(tableState.filterName.toLowerCase());
+        // --- LÒGICA OR PER TIPUS ---
+        let matchTypes = true;
 
-        return matchId && matchName;
+        // Només filtrem si hi ha algun tipus seleccionat
+        if (tableState.filterTypes.length > 0) {
+            // Comprovem si el Pokémon té ALMENYS UN (some) dels tipus seleccionats (includes)
+            matchTypes = p.types.some(pokeType => tableState.filterTypes.includes(pokeType.toLowerCase()));
+        }
+
+        // --- NOU: LÒGICA D'STATS (MÍNIM) ---
+        // Comprovem que el Pokémon tingui almenys el valor que hem escrit
+        const s = p.stats;
+        const matchStats =
+            s.hp >= tableState.minStats.hp &&
+            s.attack >= tableState.minStats.attack &&
+            s.defense >= tableState.minStats.defense &&
+            s.special_attack >= tableState.minStats.special_attack &&
+            s.special_defense >= tableState.minStats.special_defense &&
+            s.speed >= tableState.minStats.speed;
+        // -----------------------------------
+
+        return matchId && matchName && matchTypes && matchStats;
     });
 
     // 2. ORDENACIÓ
@@ -945,11 +1075,18 @@ const renderTable = () => {
 
         // Valors segurs per stats
         const s = p.stats || { hp:0, attack:0, defense:0, special_attack:0, special_defense:0, speed:0 };
+        // NOU: Generem les píndoles de tipus
+        const typesHtml = p.types.map(t => {
+            const rgb = typeToRGB(t.toLowerCase());
+            // Estil inline per simplificar (o fes servir una classe CSS)
+            return `<span style="background:rgba(${rgb}, 0.3); border:1px solid rgb(${rgb}); color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; margin-right:4px; font-weight:bold; text-transform:uppercase;">${t}</span>`;
+        }).join("");
 
         tr.innerHTML = `
               <td class="col-img"><img src="${p.sprite_url}" loading="lazy"></td>
               <td class="col-id">#${padId(p.pokedex_id)}</td>
               <td class="col-name">${capitalize(p.name)}</td>
+              <td class="col-type">${typesHtml}</td>
               <td class="col-stat">${s.hp}</td>
               <td class="col-stat">${s.attack}</td>
               <td class="col-stat">${s.defense}</td>
@@ -998,7 +1135,7 @@ filterIdInput.addEventListener("input", (e) => {
             try {
                 // Opció A: Si la teva API retorna tots els Pokémon quan q està buit:
                 // (Això és el més eficient si el backend ho suporta)
-                const allData = await fetchPokemons("");
+                const allData = await fetchAllPokemons();
 
                 /* NOTA: Si 'fetchPokemons("")' no et retorna res perquè el backend
                    exigeix text, pots recuperar la funció 'fetchAllPokemons()' que tenies
@@ -1012,8 +1149,9 @@ filterIdInput.addEventListener("input", (e) => {
                 tableState.filterName = "";
 
                 renderTable();
-                // Actualitzem el comptador manualment per si de cas
-                resultsCount.textContent = `Mostrant ${mockPokemonData.length} Pokémon`;
+                // Actualitzem el comptador manualment per si de
+                if(mockPokemonData.length>50)resultsCount.textContent = `Mostrant 50 de ${mockPokemonData.length} Pokémon`;
+                else resultsCount.textContent = `Mostrant ${mockPokemonData.length} de ${mockPokemonData.length} Pokémon`;
 
             } catch (err) {
                 console.error("Error recuperant la llista completa:", err);
@@ -1056,5 +1194,16 @@ sortHeaders.forEach(th => {
     });
 });
 
+
+
+    // Listeners per als filtres d'Stats
+    Object.keys(filterStatsInputs).forEach(key => {
+        filterStatsInputs[key].addEventListener("input", (e) => {
+            // Convertim a número (o 0 si està buit)
+            const val = parseInt(e.target.value) || 0;
+            tableState.minStats[key] = val;
+            renderTable();
+        });
+    });
 
 });

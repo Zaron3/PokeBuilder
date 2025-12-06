@@ -1725,3 +1725,95 @@ option {
     font-size: 12px;
     color: var(--muted);
 }
+
+/* Amplada per a la columna Tipus */
+.col-type {
+    width: 140px;
+}
+/* --- FILTRE DE TIPUS DESPLEGABLE --- */
+
+/* Botó activador */
+.type-trigger {
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+    font-weight: 600;
+    color: var(--muted);
+}
+.type-trigger:hover {
+    border-color: #3b82f6;
+    color: var(--ink);
+}
+
+/* El Pop-up */
+.type-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 280px; /* Amplada suficient per a 3 columnes */
+    background: #1f2024;
+    border: 1px solid var(--ring);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    padding: 12px;
+    z-index: 100;
+    margin-top: 5px;
+}
+
+/* Graella de tipus */
+.type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 per fila */
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+/* Botó individual de tipus */
+.type-option {
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    text-align: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+
+    /* ESTAT INACTIU (Gris) */
+    background: #2d2e33;
+    color: #6b7280;
+    opacity: 0.7;
+}
+
+.type-option:hover {
+    opacity: 1;
+    background: #374151;
+}
+
+/* ESTAT ACTIU (Color) - El color s'assigna per JS */
+.type-option.active {
+    opacity: 1;
+    color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    transform: scale(1.05);
+}
+
+.type-popup-actions {
+    text-align: center;
+    border-top: 1px solid var(--ring);
+    padding-top: 8px;
+}
+/* Inputs petits per a les stats */
+.stat-input {
+    padding: 4px;
+    font-size: 11px;
+    text-align: center;
+    /* Traiem les fletxetes del input number */
+    -moz-appearance: textfield;
+}
+.stat-input::-webkit-outer-spin-button,
+.stat-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}

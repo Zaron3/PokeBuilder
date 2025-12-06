@@ -106,6 +106,22 @@
                     <th class="col-img">Img</th>
                     <th class="sortable" data-key="id">ID <small>⇅</small></th>
                     <th class="sortable" data-key="name">Nom <small>⇅</small></th>
+                    <th style="position: relative;">
+
+                        <button id="type-filter-btn" class="table-input type-trigger">
+                            Tots els tipus ▾
+                        </button>
+
+                        <div id="type-filter-popup" class="type-popup hidden">
+                            <div class="type-grid" id="type-grid-container">
+                            </div>
+
+                            <div class="type-popup-actions">
+                                <button id="clear-types-btn" class="ui-btn ghost small">Netejar</button>
+                            </div>
+                        </div>
+
+                    </th>
                     <th class="col-stat sortable" data-key="hp">HP</th>
                     <th class="col-stat sortable" data-key="attack">ATK</th>
                     <th class="col-stat sortable" data-key="defense">DEF</th>
@@ -118,7 +134,14 @@
                 <tr class="filter-row">
                     <th></th> <th><input type="text" id="filter-id" placeholder="#" class="table-input"></th>
                     <th><input type="text" id="filter-name" placeholder="Filtra per nom..." class="table-input"></th>
-                    <th colspan="7"></th>
+                    <th colspan="1"></th>
+                    <th><input type="number" id="filter-hp" placeholder="Min" class="table-input stat-input"></th>
+                    <th><input type="number" id="filter-atk" placeholder="Min" class="table-input stat-input"></th>
+                    <th><input type="number" id="filter-def" placeholder="Min" class="table-input stat-input"></th>
+                    <th><input type="number" id="filter-spa" placeholder="Min" class="table-input stat-input"></th>
+                    <th><input type="number" id="filter-spd" placeholder="Min" class="table-input stat-input"></th>
+                    <th><input type="number" id="filter-spe" placeholder="Min" class="table-input stat-input"></th>
+
                 </tr>
                 </thead>
 

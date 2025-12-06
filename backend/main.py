@@ -1,6 +1,6 @@
-from idlelib.query import Query
 
-from fastapi import FastAPI, HTTPException, Depends
+
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -22,15 +22,13 @@ except ImportError as e:
 # Creem una instància de l'aplicació
 app = FastAPI()
 
-# Configurar CORS per permetre peticions des del frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producció, especificar els orígens permesos
-    allow_credentials=True,
+    allow_origins=["*"],     # Permitir todo
+    allow_credentials=False, # <--- IMPORTANTE: Poner esto en False si usas "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Inicialitzar servei d'IA
 ai_service = None
 if AI_ENABLED:
@@ -407,3 +405,11 @@ def ai_status():
         "service_initialized": ai_service is not None,
         "types_loaded": len(ai_service.type_chart) if ai_service else 0
     }
+
+
+
+# --- BLOQUE DE ARRANQUE ---
+if __name__ == "__main__":
+    import uvicorn
+    # Esto permite ejecutar el script directamente con el botón "Run" de IntelliJ
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
