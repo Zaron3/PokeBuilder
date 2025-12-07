@@ -2,13 +2,21 @@
 
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional, Dict
 from elasticsearch import Elasticsearch
 # Assegura't d'haver instal·lat la versió correcta! ("pip install 'elasticsearch<9.0.0'")
 from elasticsearch.exceptions import ConnectionError as ESConnectionError
 import sys
 import os
+import time
+from datetime import datetime, timedelta
+
+# --- IMPORTS DE SEGURETAT ---
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from starlette import status
 
 # Afegir el directori 'ia' al path per importar els mòduls
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'ia'))
@@ -18,6 +26,14 @@ try:
 except ImportError as e:
     print(f"⚠️ No s'ha pogut carregar el servei d'IA: {e}")
     AI_ENABLED = False
+
+# --- CONFIGURACIÓ DE SEGURETAT ---
+SECRET_KEY = "clau_super_secreta_del_pokebuilder_canviar_en_produccio"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hores
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 # Creem una instància de l'aplicació
 app = FastAPI()
@@ -39,6 +55,46 @@ if AI_ENABLED:
         print(f"✗ Error inicialitzant servei d'IA: {e}")
         AI_ENABLED = False
 
+
+# --- MODELS DE PYDANTIC (Inputs) ---
+
+class UserRegister(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+    full_name: str
+    favorite_pokemon: Optional[str] = "Pikachu"
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user_id: int
+    username: str
+
+    # Model per als membres de l'equip (Pokémon individuals)
+class TeamMember(BaseModel):
+    base_pokemon: str
+    nickname: Optional[str] = None
+    item: Optional[str] = None
+    ability: Optional[str] = None
+    tera_type: Optional[str] = None
+    nature: Optional[str] = None
+    moves: List[str] = []
+    evs: Dict[str, int] = {} # Ex: {"hp": 252, "attack": 252}
+
+# Model per crear un equip nou
+class TeamCreate(BaseModel):
+    team_name: str
+    description: Optional[str] = None
+    format: str
+    team_members: List[TeamMember]
+
+
+
 # --- Diccionari de Mapeig per a les Estadístiques ---
 # Tradueix els noms amigables (URL) als noms dels camps a Elasticsearch
 STAT_MAPPING = {
@@ -50,6 +106,24 @@ STAT_MAPPING = {
     "defensa_especial": "special_defense"
 }
 
+# --- FUNCIONS AUXILIARS DE SEGURETAT ---
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 # --- Dependència d'Elasticsearch ---
 def get_es_client():
@@ -66,11 +140,209 @@ def get_es_client():
     finally:
         pass
 
+# --- Dependència per obtenir l'usuari actual (Protecció de rutes) ---
+async def get_current_user(token: str = Depends(oauth2_scheme), es: Elasticsearch = Depends(get_es_client)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No s'han pogut validar les credencials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    # Busquem l'usuari a Elastic
+    query = {"query": {"term": {"username": username}}}
+    response = es.search(index="users", body=query)
+
+    if response['hits']['total']['value'] == 0:
+        raise credentials_exception
+
+    user = response['hits']['hits'][0]['_source']
+    return user
+
+# --- ENDPOINTS D'AUTENTICACIÓ ---
+
+@app.post("/api/v1/auth/register", status_code=201)
+def register_user(user_data: UserRegister, es: Elasticsearch = Depends(get_es_client)):
+    """
+    Registra un nou usuari a la base de dades.
+    """
+    # 1. Comprovar si l'usuari o l'email ja existeixen
+    query_check = {
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"username": user_data.username}},
+                    {"term": {"email": user_data.email}}
+                ]
+            }
+        }
+    }
+
+    # Comprovem si l'índex existeix abans de cercar
+    if es.indices.exists(index="users"):
+        response = es.search(index="users", body=query_check)
+        if response['hits']['total']['value'] > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="L'usuari o el correu electrònic ja estan registrats."
+            )
+
+    # 2. Crear l'objecte usuari segons l'estructura definida
+    # Generem un ID basat en el temps (timestamp) per tenir un INT únic
+    new_user_id = int(time.time() * 1000)
+
+    hashed_password = get_password_hash(user_data.password)
+
+    new_user_doc = {
+        "user_id": new_user_id,
+        "username": user_data.username,
+        "email": user_data.email,
+        "password_hash": hashed_password,
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "is_active": True,
+        "profile": {
+            "full_name": user_data.full_name,
+            "avatar_url": f"https://ui-avatars.com/api/?name={user_data.username}",
+            "bio": "Nou entrenador Pokémon!",
+            "favorite_pokemon": user_data.favorite_pokemon
+        },
+        "preferences": {
+            "default_format": "vgc",
+            "language": "es",
+            "theme": "dark"
+        }
+    }
+
+    # 3. Guardar a Elasticsearch
+    # Fem servir l'username com a _id del document per evitar duplicats a nivell intern
+    es.index(index="users", id=str(new_user_id), document=new_user_doc)
+    es.indices.refresh(index="users") # Forçar refresc perquè estigui disponible de seguida
+
+    return {"message": "Usuari registrat correctament", "user_id": new_user_id, "username": user_data.username}
+
+@app.post("/api/v1/auth/login", response_model=Token)
+def login_for_access_token(
+        # Fem servir OAuth2PasswordRequestForm en lloc de UserLogin
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        es: Elasticsearch = Depends(get_es_client)
+):
+    """
+    Inicia sessió. Compatible amb el botó 'Authorize' del Swagger.
+    """
+    # 1. Buscar l'usuari
+    # Nota: OAuth2PasswordRequestForm guarda l'usuari a .username (no importa si és email o nick)
+    query = {"query": {"term": {"username": form_data.username}}}
+
+    try:
+        response = es.search(index="users", body=query)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuari o contrasenya incorrectes",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if response['hits']['total']['value'] == 0:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuari o contrasenya incorrectes",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = response['hits']['hits'][0]['_source']
+
+    # 2. Verificar contrasenya
+    stored_hash = user.get('password_hash')
+    is_password_correct = False
+
+    if stored_hash:
+        try:
+            is_password_correct = verify_password(form_data.password, stored_hash)
+        except Exception:
+            is_password_correct = False
+
+    if not is_password_correct:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuari o contrasenya incorrectes",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 3. Generar Token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user['username'], "id": user['user_id']},
+        expires_delta=access_token_expires
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user['user_id'],
+        "username": user['username']
+    }
+
+@app.get("/api/v1/users/me")
+def read_users_me(current_user: dict = Depends(get_current_user)):
+    """
+    Retorna la informació de l'usuari actualment autenticat (basat en el token).
+    """
+    # Eliminem el hash de la contrasenya abans d'enviar-lo per seguretat
+    if 'password_hash' in current_user:
+        del current_user['password_hash']
+    return current_user
+
+
 # --- Endpoints de l'API ---
 
 @app.get("/")
 def ruta_arrel():
     return {"missatge": "El servidor FastAPI del PokeBuilder funciona!"}
+
+# Endpoint: Guardar Equip ---
+@app.post("/api/v1/teams", status_code=201)
+def create_team(
+        team_data: TeamCreate,
+        current_user: dict = Depends(get_current_user), # <--- Aquesta línia protegeix l'endpoint
+        es: Elasticsearch = Depends(get_es_client)
+):
+    """
+    Desa un nou equip a la base de dades.
+    Requereix estar autenticat. El 'user_id' s'agafa automàticament del token.
+    """
+    try:
+        # Convertim el model Pydantic a un diccionari
+        team_doc = team_data.dict()
+
+        # Injectem l'usuari automàticament (seguretat: l'usuari no pot mentir sobre qui és)
+        team_doc["user_id"] = current_user["username"]
+
+        # Afegim data de creació
+        team_doc["created_at"] = datetime.now().isoformat()
+
+        # Guardar a Elasticsearch (deixem que generi l'ID sol)
+        response = es.index(index="teams", document=team_doc)
+
+        # Forcem un refresc perquè surti immediatament a "Els meus equips"
+        es.indices.refresh(index="teams")
+
+        return {
+            "success": True,
+            "message": "Equip desat correctament",
+            "team_id": response["_id"],
+            "team_name": team_doc["team_name"]
+        }
+
+    except Exception as e:
+        print(f"Error guardant equip: {e}")
+        raise HTTPException(status_code=500, detail=f"Error guardant l'equip: {str(e)}")
 
 # --- ENDPOINT UNIFICAT: Cerca, Ordenació i Filtre per Tipus ---
 @app.get("/api/v1/pokemon/search")
