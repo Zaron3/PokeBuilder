@@ -15,17 +15,137 @@ document.addEventListener("DOMContentLoaded", async () => {
      FUNCIONS DE DADES (API)
      ============================================================ */
 
-  // Cerca bàsica per prefix
-  async function fetchPokemons(query) {
-    try {
-        const res = await fetch(`${API_BASE}/pokemon/search?q=${query}&limit=1000`);
-      if (!res.ok) throw new Error("Error de connexió amb l'API");
-      return await res.json();
-    } catch (err) {
-      console.error("Error carregant Pokémon:", err);
-      return [];
+    const paginationContainer = document.getElementById("pagination-controls");
+
+    const renderPagination = (totalItems) => {
+        paginationContainer.innerHTML = "";
+
+        const totalPages = Math.ceil(totalItems / tableState.limit);
+
+        if (totalPages <= 1) return; // No cal paginació si només hi ha 1 pàgina
+
+        // Funció auxiliar per crear botó
+        const createBtn = (text, page, isActive = false, isDisabled = false) => {
+            const btn = document.createElement("button");
+            btn.className = `page-btn ${isActive ? 'active' : ''}`;
+            btn.textContent = text;
+            btn.disabled = isDisabled;
+            if (!isDisabled && !isActive) {
+                btn.addEventListener("click", () => {
+                    tableState.currentPage = page;
+                    renderTable();
+                });
+            }
+            return btn;
+        };
+
+        // 1. Botó ANTERIOR (<)
+        paginationContainer.appendChild(createBtn("<", tableState.currentPage - 1, false, tableState.currentPage === 1));
+
+        // 2. Botons de PÀGINA (Lògica de finestra lliscant)
+        // Volem mostrar un màxim de botons (ex: 8)
+        let startPage, endPage;
+        const maxButtons = 8;
+
+        if (totalPages <= maxButtons) {
+            // Si hi ha poques pàgines, les mostrem totes
+            startPage = 1;
+            endPage = totalPages;
+        } else {
+            // Si n'hi ha moltes, centrem la vista
+            const maxPagesBeforeCurrent = Math.floor(maxButtons / 2);
+            const maxPagesAfterCurrent = Math.ceil(maxButtons / 2) - 1;
+
+            if (tableState.currentPage <= maxPagesBeforeCurrent) {
+                // Estem al principi (ex: Page 1, 2, 3...)
+                startPage = 1;
+                endPage = maxButtons;
+            } else if (tableState.currentPage + maxPagesAfterCurrent >= totalPages) {
+                // Estem al final
+                startPage = totalPages - maxButtons + 1;
+                endPage = totalPages;
+            } else {
+                // Estem al mig
+                startPage = tableState.currentPage - maxPagesBeforeCurrent;
+                endPage = tableState.currentPage + maxPagesAfterCurrent;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            paginationContainer.appendChild(createBtn(i, i, i === tableState.currentPage));
+        }
+
+        // 3. Botó SEGÜENT (>)
+        paginationContainer.appendChild(createBtn(">", tableState.currentPage + 1, false, tableState.currentPage === totalPages));
+    };
+
+    // Nova funció de cerca que envia TOTS els filtres al Backend (amb traducció)
+    async function fetchPokemons(state) {
+        try {
+            const params = new URLSearchParams();
+
+            // 1. Text (Nom o ID)
+            if (state.filterName) params.append("q", state.filterName);
+            else if (state.filterId) params.append("q", state.filterId);
+
+            // 2. Tipus (Llista)
+            if (state.filterTypes && state.filterTypes.length > 0) {
+                state.filterTypes.forEach(t => params.append("types", t));
+            }
+
+            // 3. Stats Mínims
+            if (state.minStats) {
+                // El backend espera noms en anglès per als filtres de rang (hp_min, speed_min...),
+                // així que aquí NO cal traduir, ja que l'API d'en Torrent està ben feta per als filtres.
+                if (state.minStats.hp > 0) params.append("hp_min", state.minStats.hp);
+                if (state.minStats.attack > 0) params.append("attack_min", state.minStats.attack);
+                if (state.minStats.defense > 0) params.append("defense_min", state.minStats.defense);
+                if (state.minStats.special_attack > 0) params.append("special_attack_min", state.minStats.special_attack);
+                if (state.minStats.special_defense > 0) params.append("special_defense_min", state.minStats.special_defense);
+                if (state.minStats.speed > 0) params.append("speed_min", state.minStats.speed);
+            }
+
+            // 4. Ordenació (AQUÍ ÉS ON FEM LA MÀGIA DE TRADUCCIÓ)
+            if (state.sortKey) {
+                let sortField = state.sortKey;
+
+                // Diccionari: "El que tenim al HTML" -> "El que vol el Backend"
+                const translationMap = {
+                    'speed': 'velocitat',
+                    'attack': 'atac',
+                    'defense': 'defensa',
+                    'special_attack': 'atac_especial',
+                    'special_defense': 'defensa_especial'
+                    // 'hp' és igual en els dos, 'id' i 'name' també
+                };
+
+                // Si la clau està al diccionari, la canviem. Si no, la deixem tal qual.
+                if (translationMap[sortField]) {
+                    sortField = translationMap[sortField];
+                }
+
+                params.append("stat", sortField);
+            }
+
+            params.append("order", state.sortAsc ? "asc" : "desc");
+
+            // CÀLCUL DE L'OFFSET
+            const offset = (state.currentPage - 1) * state.limit;
+
+            params.append("limit", state.limit);
+            params.append("offset", offset); // <--- AFEGIR AIXÒ
+            params.append("order", state.sortAsc ? "asc" : "desc");
+
+            const res = await fetch(`${API_BASE}/pokemon/search?${params.toString()}`);
+            if (!res.ok) throw new Error("Error de connexió amb l'API");
+            return await res.json();
+
+        } catch (err) {
+            console.error("Error carregant Pokémon:", err);
+            // En cas d'error retornem estructura buida segura
+            return { total: 0, results: [] };
+        }
     }
-  }
 
   // Nova funció per obtenir Pokémon ordenats per estadística
   async function fetchSortedPokemons(stat, order) {
@@ -42,7 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return [];
     }
   }
-
+/*
   // Carrega inicial de tots els Pokémon
   async function fetchAllPokemons() {
     const letters = "abcdefghijklmnopqrstuvwxyz".split("");
@@ -62,7 +182,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     all.sort((a, b) => a.pokedex_id - b.pokedex_id);
     console.log(`Dades carregades: ${all.length} Pokémon.`);
     return all;
-  }
+  }*/
 
   /* ============================================================
      UTILITATS I CONSTANTS
@@ -115,49 +235,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     // 3. Modificar funció d'obrir modal
-    const openSearch = async index => {
+    const openSearch = (index) => {
         editingIndex = index;
 
-        // Resetegem filtres visuals
+        // Reset inputs visuals...
         filterIdInput.value = "";
         filterNameInput.value = "";
         Object.values(filterStatsInputs).forEach(input => input.value = "");
-        // Resetegem l'estat intern COMPLET (incloent minStats)
+
+        // Reset estat...
         tableState = {
             filterId: "",
             filterName: "",
             filterTypes: [],
-            // NO T'OBLIDIS D'AQUESTA LÍNIA:
-            minStats: {hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0},
+            minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
+
+            // AFEGEIX AIXÒ:
+            currentPage: 1,
+            limit: 50,
+
             sortKey: "id",
             sortAsc: true
         };
-        updateTypeButtonText(); // Reset del text del botó
+        updateTypeButtonText();
 
-        // --- BLOC DE CÀRREGA ---
-        // 1. Mostrem el spinner
-        if (loadingSpinner) loadingSpinner.classList.remove("hidden");
-
-        try {
-            // 2. Fem la càrrega (això triga uns segons)
-            mockPokemonData = await fetchAllPokemons();
-
-            // 3. Renderitzem la taula quan tenim dades
-            renderTable();
-
-        } catch (e) {
-            alert("Error carregant dades del servidor.");
-            console.error(e);
-        } finally {
-            // 4. SEMPRE amaguem el spinner al final (tant si va bé com si falla)
-            if (loadingSpinner) loadingSpinner.classList.add("hidden");
-        }
-        // -----------------------
-
-        renderTable();
+        // JA NO CAL CARREGAR RES ABANS.
+        // Simplement obrim el modal i demanem la primera pàgina.
         searchModal.style.display = "block";
-        filterNameInput.focus(); // Focus al cercador de nom
+        filterNameInput.focus();
         document.body.style.overflow = 'hidden';
+
+        renderTable(); // Això dispararà la petició al backend
     };
 
 // Funció per tancar (només per referència, ja la tens)
@@ -206,16 +314,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const powerEl = document.getElementById("team-power-val");
   const domEl = document.getElementById("team-dominant-val");
   const weakEl = document.getElementById("team-weak-val");
-
-
-  /* ============================================================
-     CÀRREGA INICIAL DE DADES
-     ============================================================ */
-  try {
-    mockPokemonData = await fetchAllPokemons();
-  } catch (e) {
-    console.error("Error critical carregant dades:", e);
-  }
 
   /* ============================================================
      FUNCIONS DE RENDERITZAT (UI)
@@ -925,6 +1023,8 @@ let tableState = {
     filterName: "",
     filterTypes: [], // <-- CANVI: Ara és un array buit []
     minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
+    currentPage: 1,  // <--- NOU: Pàgina actual (comença a 1)
+    limit: 50,       // <--- NOU: Límit per pàgina
     sortKey: "id", // Per defecte ordenat per ID
     sortAsc: true
 };
@@ -965,23 +1065,7 @@ let tableState = {
         });
     };
 
-    // 2. Toggle (Activar/Desactivar un tipus)
-    const toggleTypeFilter = (type) => {
-        if (tableState.filterTypes.includes(type)) {
-            // Si ja hi és, el traiem
-            tableState.filterTypes = tableState.filterTypes.filter(t => t !== type);
-        } else {
-            // Si no hi és, l'afegim
-            tableState.filterTypes.push(type);
-        }
 
-        // Actualitzem visualment el botó principal
-        updateTypeButtonText();
-        // Actualitzem els colors de la graella
-        renderTypeFilterOptions();
-        // FILTREM LA TAULA!
-        renderTable();
-    };
 
     const updateTypeButtonText = () => {
         const count = tableState.filterTypes.length;
@@ -1033,101 +1117,79 @@ const filterNameInput = document.getElementById("filter-name");
 const resultsCount = document.getElementById("results-count");
 const sortHeaders = document.querySelectorAll(".sortable");
 
-// --- FUNCIÓ PRINCIPAL: RENDERITZAR TAULA ---
-const renderTable = () => {
-    tableBody.innerHTML = "";
+// --- FUNCIÓ PRINCIPAL: CONSULTAR API I PINTAR ---
+    const renderTable = async () => {
+        // 1. Feedback visual (Spinner)
+        tableBody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:20px;">🔄 Carregant dades...</td></tr>';
 
-    // 1. FILTRATGE (Client-Side)
-    // Filtrem sobre 'mockPokemonData' que conté TOTS els Pokémon
-    let filteredData = mockPokemonData.filter(p => {
-        // Filtre ID (si n'hi ha)
-        const matchId = tableState.filterId === "" || p.pokedex_id.toString().includes(tableState.filterId);
-        // Filtre Nom (si n'hi ha)
-        const matchName = tableState.filterName === "" || p.name.toLowerCase().includes(tableState.filterName.toLowerCase());
-        // --- LÒGICA OR PER TIPUS ---
-        let matchTypes = true;
+        try {
+            // 2. CONSULTA AL BACKEND
+            const data = await fetchPokemons(tableState);
 
-        // Només filtrem si hi ha algun tipus seleccionat
-        if (tableState.filterTypes.length > 0) {
-            // Comprovem si el Pokémon té ALMENYS UN (some) dels tipus seleccionats (includes)
-            matchTypes = p.types.some(pokeType => tableState.filterTypes.includes(pokeType.toLowerCase()));
+            // 3. EXTRAIEM DADES (Adaptació al nou format)
+            // Si el backend retorna { total, results }, fem servir això.
+            // Si per algun motiu retorna array (versió antiga), fem fallback.
+            const results = Array.isArray(data) ? data : (data.results || []);
+            const totalCount = data.total !== undefined ? data.total : results.length;
+
+            // Actualitzem variable local (opcional, per depuració)
+            mockPokemonData = results;
+
+            // 4. Netejem taula
+            tableBody.innerHTML = "";
+
+            if (results.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:20px;">No s\'han trobat Pokémon amb aquests filtres.</td></tr>';
+                resultsCount.textContent = "0 resultats";
+                return;
+            }
+
+            // 5. PINTAR FILES (Iterem sobre 'results')
+            results.forEach(p => {
+                const tr = document.createElement("tr");
+                const s = p.stats || { hp:0, attack:0, defense:0, special_attack:0, special_defense:0, speed:0 };
+
+                const typesHtml = p.types.map(t => {
+                    const rgb = typeToRGB(t.toLowerCase());
+                    return `<span style="background:rgba(${rgb}, 0.3); border:1px solid rgb(${rgb}); color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; margin-right:4px; font-weight:bold; text-transform:uppercase;">${t}</span>`;
+                }).join("");
+
+                tr.innerHTML = `
+                  <td class="col-img"><img src="${p.sprite_url}" loading="lazy"></td>
+                  <td class="col-id">#${padId(p.pokedex_id)}</td>
+                  <td class="col-name">${capitalize(p.name)}</td>
+                  <td class="col-type">${typesHtml}</td>
+                  <td class="col-stat">${s.hp}</td>
+                  <td class="col-stat">${s.attack}</td>
+                  <td class="col-stat">${s.defense}</td>
+                  <td class="col-stat">${s.special_attack}</td>
+                  <td class="col-stat">${s.special_defense}</td>
+                  <td class="col-stat">${s.speed}</td>
+                  <td class="col-action">
+                      <button class="add-row-btn" title="Afegir">+</button>
+                  </td>
+                `;
+                tr.addEventListener("click", () => selectPokemonFromTable(p));
+                tableBody.appendChild(tr);
+            });
+
+            // ACTUALITZAR LA PAGINACIÓ I EL TEXT
+            const start = (tableState.currentPage - 1) * tableState.limit + 1;
+            const end = Math.min(start + results.length - 1, totalCount);
+
+            if (totalCount > 0) {
+                resultsCount.textContent = `Mostrant ${start}-${end} de ${totalCount} Pokémon`;
+            } else {
+                resultsCount.textContent = "0 resultats";
+            }
+
+            renderPagination(totalCount); // <--- AFEGEIX AIXÒ
+
+        } catch (error) {
+            console.error("Error al renderTable:", error);
+            tableBody.innerHTML = '<tr><td colspan="12" style="color:red; text-align:center;">Error connectant amb el servidor.</td></tr>';
         }
-
-        // --- NOU: LÒGICA D'STATS (MÍNIM) ---
-        // Comprovem que el Pokémon tingui almenys el valor que hem escrit
-        const s = p.stats;
-        const matchStats =
-            s.hp >= tableState.minStats.hp &&
-            s.attack >= tableState.minStats.attack &&
-            s.defense >= tableState.minStats.defense &&
-            s.special_attack >= tableState.minStats.special_attack &&
-            s.special_defense >= tableState.minStats.special_defense &&
-            s.speed >= tableState.minStats.speed;
-        // -----------------------------------
-
-        return matchId && matchName && matchTypes && matchStats;
-    });
-
-    // 2. ORDENACIÓ
-    filteredData.sort((a, b) => {
-        let valA, valB;
-
-        if (tableState.sortKey === 'id') {
-            valA = a.pokedex_id; valB = b.pokedex_id;
-        } else if (tableState.sortKey === 'name') {
-            valA = a.name; valB = b.name;
-        } else {
-            // És una stat (hp, attack...)
-            valA = a.stats ? a.stats[tableState.sortKey] : 0;
-            valB = b.stats ? b.stats[tableState.sortKey] : 0;
-        }
-
-        if (valA < valB) return tableState.sortAsc ? -1 : 1;
-        if (valA > valB) return tableState.sortAsc ? 1 : -1;
-        return 0;
-    });
-
-    // 3. PAGINACIÓ VIRTUAL (Per rendiment)
-    // Només pintem els primers 50 resultats perquè el navegador no es pengi
-    const displayData = filteredData.slice(0, 50);
-
-    // 4. PINTAR FILES
-    displayData.forEach(p => {
-        const tr = document.createElement("tr");
-
-        // Valors segurs per stats
-        const s = p.stats || { hp:0, attack:0, defense:0, special_attack:0, special_defense:0, speed:0 };
-        // NOU: Generem les píndoles de tipus
-        const typesHtml = p.types.map(t => {
-            const rgb = typeToRGB(t.toLowerCase());
-            // Estil inline per simplificar (o fes servir una classe CSS)
-            return `<span style="background:rgba(${rgb}, 0.3); border:1px solid rgb(${rgb}); color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; margin-right:4px; font-weight:bold; text-transform:uppercase;">${t}</span>`;
-        }).join("");
-
-        tr.innerHTML = `
-              <td class="col-img"><img src="${p.sprite_url}" loading="lazy"></td>
-              <td class="col-id">#${padId(p.pokedex_id)}</td>
-              <td class="col-name">${capitalize(p.name)}</td>
-              <td class="col-type">${typesHtml}</td>
-              <td class="col-stat">${s.hp}</td>
-              <td class="col-stat">${s.attack}</td>
-              <td class="col-stat">${s.defense}</td>
-              <td class="col-stat">${s.special_attack}</td>
-              <td class="col-stat">${s.special_defense}</td>
-              <td class="col-stat">${s.speed}</td>
-              <td class="col-action">
-                  <button class="add-row-btn" title="Afegir">+</button>
-              </td>
-          `;
-
-        // Clic a la fila -> Seleccionar Pokémon
-        tr.addEventListener("click", () => selectPokemonFromTable(p));
-
-        tableBody.appendChild(tr);
-    });
-
-    resultsCount.textContent = `Mostrant ${displayData.length} de ${filteredData.length} Pokémon`;
-};
+    };
 
 const selectPokemonFromTable = (pokemon) => {
     if (editingIndex !== null) {
@@ -1138,93 +1200,68 @@ const selectPokemonFromTable = (pokemon) => {
     }
 };
 
-// --- LISTENERS DE LA TAULA ---
+// --- LISTENERS DE LA TAULA (Tots criden al Backend) ---
 
-// 1. Inputs de Text (ID i Nom)
-filterIdInput.addEventListener("input", (e) => {
-    tableState.filterId = e.target.value;
-    renderTable();
-});
-
-    filterNameInput.addEventListener("input", debounce(async (e) => {
-        const query = e.target.value.trim();
-
-        // Feedback visual immediat perquè l'usuari sàpiga que passa alguna cosa
-        resultsCount.textContent = "Actualitzant llista...";
-
-        // --- CAS 1: EL CERCADOR ESTÀ BUIT (Reset) ---
-        if (query.length === 0) {
-            try {
-                // Opció A: Si la teva API retorna tots els Pokémon quan q està buit:
-                // (Això és el més eficient si el backend ho suporta)
-                const allData = await fetchAllPokemons();
-
-                /* NOTA: Si 'fetchPokemons("")' no et retorna res perquè el backend
-                   exigeix text, pots recuperar la funció 'fetchAllPokemons()' que tenies
-                   al principi i cridar-la aquí:
-                   const allData = await fetchAllPokemons();
-                */
-
-                mockPokemonData = allData;
-
-                // Important: Assegurar que l'estat del filtre està net
-                tableState.filterName = "";
-
-                renderTable();
-                // Actualitzem el comptador manualment per si de
-                if(mockPokemonData.length>50)resultsCount.textContent = `Mostrant 50 de ${mockPokemonData.length} Pokémon`;
-                else resultsCount.textContent = `Mostrant ${mockPokemonData.length} de ${mockPokemonData.length} Pokémon`;
-
-            } catch (err) {
-                console.error("Error recuperant la llista completa:", err);
-                resultsCount.textContent = "Error recuperant dades.";
-            }
-            return; // Sortim de la funció aquí
-        }
-
-        // --- CAS 2: HI HA TEXT (Cerca al Backend) ---
-        try {
-            const results = await fetchPokemons(query);
-            mockPokemonData = results;
-
-            // Netegem el filtre intern de la taula perquè ja ve filtrat de servidor
-            tableState.filterName = "";
-
-            renderTable();
-
-        } catch (error) {
-            console.error("Error cercant en viu:", error);
-            resultsCount.textContent = "Error en la cerca";
-        }
-
-    }, 300))
-
-// 2. Clic a Capçaleres (Ordenació)
-sortHeaders.forEach(th => {
-    th.addEventListener("click", () => {
-        const key = th.dataset.key;
-
-        // Si cliquem la mateixa, invertim ordre
-        if (tableState.sortKey === key) {
-            tableState.sortAsc = !tableState.sortAsc;
-        } else {
-            tableState.sortKey = key;
-            // Per defecte les stats les volem de major a menor (desc)
-            tableState.sortAsc = (key === 'id' || key === 'name');
-        }
+    // Funció Debounce (per no saturar el servidor)
+    const debouncedRender = debounce(() => {
         renderTable();
+    }, 400); // Espera 400ms abans de demanar
+
+    // 1. Text Inputs
+    filterIdInput.addEventListener("input", (e) => {
+        tableState.filterId = e.target.value.trim();
+        tableState.currentPage = 1;
+        debouncedRender();
     });
-});
 
+    filterNameInput.addEventListener("input", (e) => {
+        tableState.filterName = e.target.value.trim();
+        tableState.currentPage = 1;
+        debouncedRender();
+    });
 
-
-    // Listeners per als filtres d'Stats
+    // 2. Stats Inputs
     Object.keys(filterStatsInputs).forEach(key => {
         filterStatsInputs[key].addEventListener("input", (e) => {
-            // Convertim a número (o 0 si està buit)
             const val = parseInt(e.target.value) || 0;
+            tableState.currentPage = 1;
             tableState.minStats[key] = val;
-            renderTable();
+            debouncedRender();
+        });
+    });
+
+    // 3. Tipus (Aquí no cal debounce perquè és un clic, volem resposta ràpida)
+    const toggleTypeFilter = (type) => {
+        if (tableState.filterTypes.includes(type)) {
+            tableState.filterTypes = tableState.filterTypes.filter(t => t !== type);
+        } else {
+            tableState.filterTypes.push(type);
+        }
+
+        tableState.currentPage = 1;
+        updateTypeButtonText();
+        renderTypeFilterOptions();
+
+        renderTable(); // Cridem directe
+    };
+
+    // 4. Ordenació
+    sortHeaders.forEach(th => {
+        th.addEventListener("click", () => {
+            const key = th.dataset.key;
+            if (tableState.sortKey === key) {
+                tableState.sortAsc = !tableState.sortAsc;
+            } else {
+                tableState.sortKey = key;
+                // Si ordenem per stats, per defecte descendent (major a menor)
+                const isStat = ['hp','attack','defense','special_attack','special_defense','speed'].includes(key);
+                tableState.sortAsc = !isStat;
+            }
+            // --- AFEGEIX AQUESTA LÍNIA ---
+            tableState.currentPage = 1;
+            // -----------------------------
+
+            renderTable(); // Cridem directe
         });
     });
 

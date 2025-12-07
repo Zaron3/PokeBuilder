@@ -96,14 +96,22 @@ class TeamCreate(BaseModel):
 
 
 # --- Diccionari de Mapeig per a les Estadístiques ---
-# Tradueix els noms amigables (URL) als noms dels camps a Elasticsearch
 STAT_MAPPING = {
+    # Noms en Català (Mantenim els que tenies)
     "velocitat": "speed",
     "hp": "hp",
     "atac": "attack",
     "defensa": "defense",
     "atac_especial": "special_attack",
-    "defensa_especial": "special_defense"
+    "defensa_especial": "special_defense",
+
+    # --- AFEGEIX AQUESTS (Anglès) ---
+    # Això permet que el frontend envii 'speed' i el backend sàpiga que és 'stats.speed'
+    "speed": "speed",
+    "attack": "attack",
+    "defense": "defense",
+    "special_attack": "special_attack",
+    "special_defense": "special_defense"
 }
 
 # --- FUNCIONS AUXILIARS DE SEGURETAT ---
@@ -363,6 +371,10 @@ def search_pokemon(
         # --- Filtre de Banejats ---
         exclude_banned: bool = Query(False), # Si és True, amaga els banejats
 
+        # AFEGEIX AIXÒ AL FINAL DELS PARÀMETRES:
+        limit: int = Query(50, le=1000), # Per defecte 50, màxim 1000
+        offset: int = Query(0, ge=0), # <--- AFEGEIX AQUEST PARÀMETRE NOU
+
         es_client: Elasticsearch = Depends(get_es_client)
 ):
     """
@@ -500,19 +512,20 @@ def search_pokemon(
         sort_criteria.append({ "pokedex_id": {"order": "asc"} })
 
     # 6. Muntar la consulta final completa
+    # 6. Muntar la consulta final
     query = {
-        "query": {
-            "bool": {
-                "must": must_clauses,
-                "filter": filter_clauses
-            }
-        },
+        "query": { "bool": { "must": must_clauses, "filter": filter_clauses } },
         "sort": sort_criteria,
-        "size": 200
+        "size": limit,
+        "from": offset  # <--- AFEGEIX AIXÒ AQUÍ (Elasticsearch fa servir "from")
     }
 
     # 7. Executar i Retornar
     response = es_client.search(index="pokemon", body=query)
+
+    # AFEGEIX AIXÒ: Obtenir el número total real de coincidències
+    total_hits = response['hits']['total']['value']
+
     results = []
     for hit in response['hits']['hits']:
         pokemon = hit['_source']
@@ -524,7 +537,11 @@ def search_pokemon(
             "stats": pokemon.get("stats"),
             "is_banned": pokemon.get("is_banned", False) # Retornem l'estat per si el frontend vol posar una icona 🚫
         })
-    return results
+    # CANVIA EL RETURN PER AQUEST OBJECTE:
+    return {
+        "total": total_hits,
+        "results": results
+    }
 
 # Endpoint: Cercador d'Habilitats
 @app.get("/api/v1/pokemon/{pokedex_id}/abilities")

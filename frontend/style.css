@@ -1856,3 +1856,53 @@ option {
     0%, 100% { opacity: 0.6; }
     50% { opacity: 1; }
 }
+
+/* --- PAGINACIÓ --- */
+.table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-top: 1px solid var(--ring);
+    background: rgba(0,0,0,0.2);
+}
+
+.pagination-container {
+    display: flex;
+    gap: 5px;
+}
+
+.page-btn {
+    background: #2d2e33;
+    border: 1px solid var(--ring);
+    color: var(--muted);
+    min-width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #374151;
+    color: white;
+    border-color: #4b5563;
+}
+
+/* Estil del botó actiu (Pàgina actual) */
+.page-btn.active {
+    background: #8b5cf6; /* Lila tipus el de la foto */
+    color: white;
+    border-color: #7c3aed;
+    pointer-events: none; /* No es pot clicar si ja hi ets */
+}
+
+.page-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
