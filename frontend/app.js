@@ -105,6 +105,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (state.minStats.speed > 0) params.append("speed_min", state.minStats.speed);
             }
 
+            if (state.excludeBanned) {
+                params.append("exclude_banned", "true");
+            }
+
             // 4. Ordenació (AQUÍ ÉS ON FEM LA MÀGIA DE TRADUCCIÓ)
             if (state.sortKey) {
                 let sortField = state.sortKey;
@@ -158,7 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return await res.json();
     } catch (err) {
       console.error("Error ordenant:", err);
-      alert("Error: " + err.message);
+      showNotification("Error: " + err.message, 'error');
       return [];
     }
   }
@@ -229,6 +233,64 @@ document.addEventListener("DOMContentLoaded", async () => {
        FUNCIONS AUXILIARS
        ============================================================ */
 
+    // Funció per mostrar confirmació personalitzada (retorna true/false)
+    const showConfirm = (message) => {
+        return new Promise((resolve) => {
+            const modal = document.getElementById("confirm-modal");
+            const text = document.getElementById("confirm-text");
+            const btnYes = document.getElementById("btn-accept-confirm");
+            const btnNo = document.getElementById("btn-cancel-confirm");
+
+            // Posem el missatge
+            text.textContent = message;
+            modal.style.display = "block";
+
+            // Funció per tancar i resoldre la promesa
+            const close = (result) => {
+                modal.style.display = "none";
+                // Netegem els events per evitar conflictes futurs
+                btnYes.onclick = null;
+                btnNo.onclick = null;
+                resolve(result); // Retornem true o false al codi que ha cridat
+            };
+
+            // Assignem els clicks
+            btnYes.onclick = () => close(true);
+            btnNo.onclick = () => close(false);
+        });
+    };
+
+    // --- SISTEMA DE NOTIFICACIONS ---
+    const showNotification = (message, type = 'info') => {
+        const container = document.getElementById("toast-container");
+
+        // Creem l'element
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+
+        // Icona segons tipus
+        let icon = "ℹ️";
+        if (type === 'success') icon = "✅";
+        if (type === 'error') icon = "❌";
+
+        toast.innerHTML = `
+        <span style="margin-right:10px;">${icon}</span>
+        <span>${message}</span>
+    `;
+
+        // Afegim al DOM
+        container.appendChild(toast);
+
+        // Auto-eliminació després de 3 segons
+        setTimeout(() => {
+            toast.classList.add("hiding");
+            // Esperem que acabi l'animació CSS per treure'l del DOM
+            toast.addEventListener("transitionend", () => {
+                toast.remove();
+            });
+        }, 3000);
+    };
+
     // NOU: Funció per guardar l'equip al LocalStorage
     const saveTeamToStorage = () => {
         localStorage.setItem("pokeBuilder_team", JSON.stringify(team));
@@ -243,17 +305,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         filterNameInput.value = "";
         Object.values(filterStatsInputs).forEach(input => input.value = "");
 
+        // Reset checkbox visual
+        const bannedCheck = document.getElementById("filter-banned");
+        if(bannedCheck) bannedCheck.checked = false;
+
         // Reset estat...
         tableState = {
             filterId: "",
             filterName: "",
             filterTypes: [],
             minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
-
+            excludeBanned: false,
             // AFEGEIX AIXÒ:
             currentPage: 1,
             limit: 50,
-
             sortKey: "id",
             sortAsc: true
         };
@@ -489,82 +554,118 @@ document.addEventListener("DOMContentLoaded", async () => {
   /* ============================================================
      HOLO STATS (LÒGICA D'ANÀLISI)
      ============================================================ */
-  async function updateHoloStats() {
-    const activeTeam = team.filter(Boolean);
+    async function updateHoloStats() {
+        const activeTeam = team.filter(Boolean);
 
-    if (!powerEl || !domEl || !weakEl) return;
+        if (!powerEl || !domEl || !weakEl) return;
 
-    // Reset si està buit
-    if (activeTeam.length === 0) {
-      powerEl.textContent = "0";
-      domEl.textContent = "-";
-      weakEl.textContent = "-";
-      return;
-    }
+        // --- 1. Càlcul Local (Poder i Dominància) ---
+        // (Aquesta part es manté igual perquè és instantània)
+        let totalPower = 0;
+        const typeCounts = {};
 
-    // 1. Càlcul Local (Poder i Dominància)
-    let totalPower = 0;
-    const typeCounts = {};
-
-    activeTeam.forEach(p => {
-      if(p.stats) {
-        totalPower += (p.stats.hp + p.stats.attack + p.stats.defense + p.stats.special_attack + p.stats.special_defense + p.stats.speed);
-      }
-      p.types.forEach(t => {
-        typeCounts[t] = (typeCounts[t] || 0) + 1;
-      });
-    });
-
-    animateValue(powerEl, parseInt(powerEl.textContent) || 0, totalPower, 800);
-
-    let maxType = "-";
-    let maxCount = 0;
-    for (const [t, count] of Object.entries(typeCounts)) {
-      if (count > maxCount) {
-        maxCount = count;
-        maxType = t;
-      }
-    }
-
-    domEl.textContent = maxType.toUpperCase();
-    if (maxType !== "-") {
-        domEl.style.color = `rgb(${typeToRGB(maxType.toLowerCase())})`;
-    } else {
-        domEl.style.color = "#fff";
-    }
-
-    // 2. Consulta al Backend (Vulnerabilitats)
-    weakEl.textContent = "...";
-    weakEl.style.color = "rgba(255,255,255,0.5)";
-
-    try {
-        const teamIds = activeTeam.map(p => p.pokedex_id);
-
-        const response = await fetch(`${API_BASE}/ai/analyze`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ team_ids: teamIds })
-        });
-
-        if (!response.ok) throw new Error("Backend Error");
-
-        const data = await response.json();
-
-        if (data.success && data.analysis) {
-            const realWeakness = data.analysis.major_weakness || "NONE";
-            weakEl.textContent = realWeakness.toUpperCase();
-            weakEl.style.color = "#ff4d4d";
-        } else {
-            weakEl.textContent = "N/A";
-            weakEl.style.color = "#777";
+        if (activeTeam.length === 0) {
+            powerEl.textContent = "0";
+            domEl.textContent = "-";
+            weakEl.textContent = "-";
+            return;
         }
 
-    } catch (error) {
-        console.error("Error connectant amb l'IA:", error);
-        weakEl.textContent = "ERR";
-        weakEl.style.color = "#ef4444";
+        activeTeam.forEach(p => {
+            if(p.stats) {
+                totalPower += (p.stats.hp + p.stats.attack + p.stats.defense + p.stats.special_attack + p.stats.special_defense + p.stats.speed);
+            }
+            p.types.forEach(t => {
+                typeCounts[t] = (typeCounts[t] || 0) + 1;
+            });
+        });
+
+        // Animació del número de poder
+        animateValue(powerEl, parseInt(powerEl.textContent) || 0, totalPower, 800);
+
+        // Tipus Dominant
+        let maxType = "-";
+        let maxCount = 0;
+        for (const [t, count] of Object.entries(typeCounts)) {
+            if (count > maxCount) {
+                maxCount = count;
+                maxType = t;
+            }
+        }
+
+        domEl.textContent = maxType.toUpperCase();
+        domEl.style.color = maxType !== "-" ? `rgb(${typeToRGB(maxType.toLowerCase())})` : "#fff";
+
+
+        // --- 2. Càlcul Remot (Vulnerabilitat - NOU ENDPOINT) ---
+
+        // El backend exigeix exactament 6 Pokémon per funcionar
+        if (activeTeam.length < 6) {
+            weakEl.textContent = "INCOMPLET";
+            weakEl.style.color = "#777"; // Gris
+            weakEl.style.fontSize = "12px"; // Més petit perquè càpiga
+            return;
+        }
+
+        weakEl.textContent = "Calculating...";
+        weakEl.style.color = "#aaa";
+        weakEl.style.fontSize = "16px";
+
+        try {
+            const token = localStorage.getItem("pokeToken");
+
+            // Construïm la Query String
+            const queryParams = activeTeam
+                .map(p => `team_ids=${p.pokedex_id}`)
+                .join('&');
+
+            const response = await fetch(`${API_BASE}/teams/vulnerability?${queryParams}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) throw new Error("Error API");
+
+            const data = await response.json();
+
+            console.log("Dades Vulnerabilitat:", data); // Per depurar
+
+            // --- CORRECCIÓ AQUÍ ---
+            // Fem servir les claus que hem vist al Python: 'is_balanced' i 'most_vulnerable_type'
+
+            if (data.is_balanced) {
+                // Si l'equip està equilibrat (no té debilitats x2 o x4 greus)
+                weakEl.textContent = "🛡️ SÒLID";
+                weakEl.style.color = "#22c55e"; // Verd
+            } else {
+                // Si té una vulnerabilitat, agafem el nom del tipus
+                const typeName = data.most_vulnerable_type; // Ex: "Fire"
+
+                if (typeName && typeName !== "N/A") {
+                    weakEl.textContent = typeName.toUpperCase();
+
+                    // Posem el color del tipus
+                    const rgb = TYPE_RGB[typeName.toLowerCase()];
+                    if (rgb) {
+                        weakEl.style.color = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+                    } else {
+                        weakEl.style.color = "#ef4444"; // Vermell si no troba el color
+                    }
+                } else {
+                    weakEl.textContent = "???";
+                    weakEl.style.color = "#777";
+                }
+            }
+
+        } catch (error) {
+            console.error("Error IA Vulnerabilitat:", error);
+            weakEl.textContent = "ERROR";
+            weakEl.style.color = "#ef4444";
+        }
     }
-  }
 
   function animateValue(obj, start, end, duration) {
     if (start === end) return;
@@ -587,35 +688,80 @@ document.addEventListener("DOMContentLoaded", async () => {
     team[idx] = null;
     saveTeamToStorage();
     renderTeamGrid();
-    refreshSearchList(); // Actualitza la llista per desbloquejar el Pokémon eliminat
   };
 
-  const clearTeam = () => {
-    team = Array(6).fill(null);
-    saveTeamToStorage();
-    renderTeamGrid();
-    refreshSearchList();
-  };
+    const clearTeam = () => {
+        team = Array(6).fill(null);
+        saveTeamToStorage();
 
-  const fillRandomTeam = () => {
-    const emptySlots = team.map((v,i) => v ? null : i).filter(v => v !== null);
-    const selected = new Set(getSelectedNames());
-    // Filtrem els que ja tenim
-    const pool = mockPokemonData.filter(p => !selected.has(p.name.toLowerCase()));
+        // --- AFEGEIX AIXÒ ---
+        localStorage.removeItem("pokeBuilder_teamName");
+        localStorage.removeItem("pokeBuilder_teamId"); // Oblidem l'ID antic
+        teamNameInput.value = ""; // Buidem la caixa visualment
+        // --------------------
 
-    // Algoritme de barreja (Fisher-Yates) parcial
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
+        renderTeamGrid();
+        showNotification("Equip netejat", 'info');
+    };
 
-    emptySlots.forEach((slot, k) => {
-      if (pool[k]) team[slot] = pool[k];
-    });
-    saveTeamToStorage();
-    renderTeamGrid();
-    refreshSearchList();
-  };
+    /* ============================================================
+     GENERAR EQUIP ALEATORI (MODIFICAT)
+     ============================================================ */
+    const fillRandomTeam = async () => {
+        const emptySlots = team.map((v, i) => v ? null : i).filter(v => v !== null);
+
+        // Si l'equip ja està ple, no fem res
+        if (emptySlots.length === 0) {
+            showNotification("L'equip ja està complet!", 'info');
+            return;
+        }
+
+        // Feedback visual (perquè la petició pot trigar 1 segon)
+        randomBtn.disabled = true;
+        const originalText = randomBtn.textContent;
+
+        try {
+            let pool = [];
+
+            // 1. Si no tenim dades locals suficients, les demanem al Backend
+            // Demanem fins a 1000 Pokémon per tenir varietat
+            if (mockPokemonData.length < 100) {
+                const res = await fetch(`${API_BASE}/pokemon/search?limit=1000`);
+                const data = await res.json();
+                // Guardem el resultat a la variable global per no haver de tornar a demanar-ho
+                mockPokemonData = data.results || [];
+            }
+
+            // Fem servir la llista global (sigui acabada de carregar o ja existent)
+            pool = [...mockPokemonData];
+
+            // 2. Filtrem els que ja tenim a l'equip per no repetir
+            const selectedNames = new Set(team.filter(Boolean).map(p => p.name.toLowerCase()));
+            pool = pool.filter(p => !selectedNames.has(p.name.toLowerCase()));
+
+            // 3. Algoritme de barreja (Fisher-Yates)
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+
+            // 4. Omplim els forats
+            emptySlots.forEach((slot, k) => {
+                if (pool[k]) team[slot] = pool[k];
+            });
+
+            saveTeamToStorage();
+            renderTeamGrid();
+            showNotification("Equip aleatori generat!", 'success');
+
+        } catch (error) {
+            console.error("Error random team:", error);
+            showNotification("Error generant equip aleatori", 'error');
+        } finally {
+            // Restaurem el botó
+            randomBtn.disabled = false;
+        }
+    };
 
   const getSelectedNames = () => team.filter(Boolean).map(p => p.name.toLowerCase());
 
@@ -632,7 +778,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const teamIds = team.filter(Boolean).map(p => p.pokedex_id);
 
     if (teamIds.length === 0) {
-      alert("Afegeix almenys un Pokémon a l'equip per obtenir recomanacions.");
+        showNotification("Afegeix almenys un Pokémon per obtenir recomanacions.", 'info');
       return;
     }
 
@@ -774,9 +920,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("Aplicació inicialitzada.");
 
 
-/* ============================================================
-     GESTIÓ D'USUARIS (FRONTEND MOCK)
-     ============================================================ */
+    /* ============================================================
+         GESTIÓ D'USUARIS (AUTH REAL)
+         ============================================================ */
 
 // Elements Generals
 const loginBtn = document.getElementById("login-btn");
@@ -834,25 +980,94 @@ loginBtn.addEventListener("click", () => {
     }
 });
 
-// Funció per obrir i renderitzar el perfil
-const openProfileModal = (username) => {
-    profileUsername.textContent = username;
+// Funció per obrir i renderitzar el perfil (AMB DADES REALS)
+    const openProfileModal = async (username) => {
+        profileUsername.textContent = username;
+        const token = localStorage.getItem("pokeToken");
 
-    // Aquí simularem la crida al backend per obtenir equips
-    // De moment, fem servir una llista buida []
-    const userTeams = [];
-
-    renderUserTeams(userTeams);
-    profileModal.style.display = "block";
-};
-
-// Funció per pintar la llista d'equips
-const renderUserTeams = (teams) => {
-    userTeamsList.innerHTML = "";
-
-    if (teams.length === 0) {
-        // --- ESTAT BUIT (El que demanaves) ---
+        // Mostrem estat de càrrega
         userTeamsList.innerHTML = `
+        <div style="text-align:center; padding:20px; color:#aaa;">
+            <div class="spinner" style="width:20px; height:20px; margin:0 auto 10px;"></div>
+            Carregant els teus equips...
+        </div>`;
+
+        profileModal.style.display = "block";
+
+        try {
+            // Necessitem l'ID de l'usuari per l'endpoint (o el username, segons com ho tinguis al backend)
+            // Al teu main.py l'endpoint és /teams/user/{user_id}
+            // Però l'ID que guarda elasticsearch sol ser el username si així ho hem fet.
+            // Provem amb el username directament:
+            const response = await fetch(`${API_BASE}/teams/user/${username}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (!response.ok) throw new Error("Error recuperant equips");
+
+            const teams = await response.json();
+            renderUserTeams(teams); // Passem els equips reals a la funció de pintar
+
+        } catch (error) {
+            console.error(error);
+            userTeamsList.innerHTML = '<p style="color:#ef4444; text-align:center; padding:20px;">Error carregant els equips. Torna-ho a provar.</p>';
+        }
+    };
+
+    // Funció per convertir un equip guardat (noms) en un equip editable (dades completes)
+    const loadTeamToEditor = async (savedTeam) => {
+        // 1. Netejem l'equip actual
+        team = Array(6).fill(null);
+
+        // --- ACTUALITZEM EL NOM I EL GUARDEM ---
+        teamNameInput.value = savedTeam.team_name;
+        localStorage.setItem("pokeBuilder_teamName", savedTeam.team_name);
+        localStorage.setItem("pokeBuilder_teamId", savedTeam.id); // Guardem ID per sobreescriure després
+
+        // 2. Per cada membre, recuperem les dades completes del Pokémon base
+        const promises = savedTeam.team_members.map(async (member, index) => {
+            if (!member.base_pokemon) return;
+
+            try {
+                // Busquem el Pokémon base (sprites, tipus, stats...)
+                const res = await fetch(`${API_BASE}/pokemon/search?q=${member.base_pokemon}&limit=1`);
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    const baseData = data.results[0];
+
+                    // --- FUSIÓ DE DADES (CRÍTIC) ---
+                    // Agafem les dades base de l'API i hi posem a sobre les dades guardades (member)
+                    team[index] = {
+                        ...baseData,          // Foto, Tipus, Stats base...
+
+                        // RESTAUREM ELS CAMPS EDITABLES:
+                        item: member.item || null,        // Objecte guardat
+                        ability: member.ability || null,  // Habilitat guardada
+                        nature: member.nature || null,    // Naturalesa guardada
+                        moves: member.moves || [],        // Moviments guardats
+                        evs: member.evs || {}             // EVs guardats
+                    };
+                }
+            } catch (e) {
+                console.error(`Error carregant ${member.base_pokemon}:`, e);
+            }
+        });
+
+        await Promise.all(promises);
+
+        // 3. Guardem i renderitzem
+        saveTeamToStorage();
+        renderTeamGrid();
+        showNotification("Equip carregat correctament!", 'success');
+    };
+// Funció per pintar la llista d'equips i permetre carregar-los
+    const renderUserTeams = (teams) => {
+        userTeamsList.innerHTML = "";
+
+        if (teams.length === 0) {
+            // Estat Buit
+            userTeamsList.innerHTML = `
             <div class="empty-state">
                 <span class="empty-icon">📂</span>
                 <p>Encara no tens cap equip guardat.</p>
@@ -862,26 +1077,102 @@ const renderUserTeams = (teams) => {
             </div>
           `;
 
-        // Donem funcionalitat al botó de l'estat buit
-        document.getElementById("create-first-team-btn").addEventListener("click", () => {
-            profileModal.style.display = "none"; // Tanquem modal
-            // Ja estem al builder, així que l'usuari pot començar a editar
-        });
+            // Listener per tancar modal
+            const btn = document.getElementById("create-first-team-btn");
+            if(btn) btn.addEventListener("click", () => { profileModal.style.display = "none"; });
 
-    } else {
-        // (Aquí aniria el codi per pintar la llista quan tinguem equips)
-        userTeamsList.textContent = "Aquí sortiran els teus equips...";
-    }
-};
+        } else {
+            // Pintem la llista
+            teams.forEach(t => {
+                const div = document.createElement("div");
+                div.className = "team-list-item";
 
-// --- LOGOUT DES DEL PERFIL ---
-profileLogoutBtn.addEventListener("click", () => {
-    if(confirm("Segur que vols sortir?")) {
-        localStorage.removeItem("pokeUser");
-        checkLoginStatus();
-        profileModal.style.display = "none";
-    }
-});
+                // Estils (Flexbox per alinear text a l'esquerra i botons a la dreta)
+                div.style.cssText = `
+                background: #2d2e33; 
+                margin-bottom: 12px;
+                padding: 16px;
+                border-radius: 8px; 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                border: 1px solid #3f3f46;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            `;
+
+                // Busquem primer la data d'actualització, si no hi és, la de creació
+                const rawDate = t.updated_at || t.created_at;
+
+                const dateStr = rawDate ? new Date(rawDate).toLocaleDateString() : "Data desconeguda";
+                const memberCount = t.team_members ? t.team_members.length : 0;
+
+                // HTML amb DOS botons
+                div.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                    <div style="font-weight:bold; color:white; font-size:1.1em;">${t.team_name}</div>
+                    <div style="font-size:12px; color:#9ca3af;">
+                        <span style="background:#374151; padding:2px 6px; border-radius:4px; margin-right:6px;">${memberCount} Pokémon</span> 
+                        📅 ${dateStr}
+                    </div>
+                </div>
+                
+                <div style="display:flex; gap:8px;">
+                    <button class="ui-btn small delete-team-btn" style="background:#ef4444; border:none; padding: 6px 12px;" title="Esborrar">
+                        🗑️
+                    </button>
+                    
+                    <button class="ui-btn small load-team-btn" style="background:#3b82f6; border:none;">
+                        Carregar
+                    </button>
+                </div>
+            `;
+
+                // Listener CARREGAR
+                const loadBtn = div.querySelector(".load-team-btn");
+                loadBtn.addEventListener("click", async () => {
+                    const isConfirmed = await showConfirm(`Vols carregar "${t.team_name}"? Es perdrà l'equip actual no guardat.`);
+                    if (isConfirmed) {
+                        await loadTeamToEditor(t);
+                        profileModal.style.display = "none";
+                    }
+                });
+
+                // Listener ESBORRAR (NOU)
+                const deleteBtn = div.querySelector(".delete-team-btn");
+                deleteBtn.addEventListener("click", async (e) => {
+                    e.stopPropagation(); // Evita clicks accidentals
+
+                    const isConfirmed = await showConfirm(`⚠️ Segur que vols ESBORRAR "${t.team_name}"? Aquesta acció no es pot desfer.`);
+
+                    if (isConfirmed) {
+                        try {
+                            const token = localStorage.getItem("pokeToken");
+                            // Cridem al nou endpoint DELETE
+                            const res = await fetch(`${API_BASE}/teams/${t.id}`, {
+                                method: "DELETE",
+                                headers: { "Authorization": `Bearer ${token}` }
+                            });
+
+                            if (!res.ok) throw new Error("Error esborrant equip");
+
+                            showNotification("Equip esborrat correctament", 'success');
+
+                            // Recarreguem la llista per treure l'element esborrat
+                            openProfileModal(localStorage.getItem("pokeUser"));
+
+                        } catch (err) {
+                            showNotification("No s'ha pogut esborrar l'equip", 'error');
+                            console.error(err);
+                        }
+                    }
+                });
+
+                userTeamsList.appendChild(div);
+            });
+        }
+    };
+
+
 
 // Tancar el modal de perfil
 profileCloseBtn.addEventListener("click", () => {
@@ -916,102 +1207,227 @@ authCloseBtn.addEventListener("click", () => {
     authModal.style.display = "none";
 });
 
-// 5. Processar LOGIN
-loginForm.addEventListener("submit", (e) => {
-    e.preventDefault();
+// --- FUNCIÓ 1: REGISTRE (Sign Up) ---
+    registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-    const username = loginInput.value.trim();
-    // Agafem la contrasenya del nou input
-    const password = document.getElementById("login-pass").value.trim();
+        const username = regInputUser.value.trim();
+        const password = document.getElementById("reg-pass").value.trim();
+        const email = document.getElementById("reg-email").value.trim(); // Assegura't de tenir aquest input al HTML!
+        const fullName = document.getElementById("reg-fullname").value.trim() || username; // Opcional
 
-    // Validem que tots dos camps tinguin text
-    if (username && password) {
-        localStorage.setItem("pokeUser", username);
+        if (!username || !password || !email) {
+            showNotification("Si us plau, omple tots els camps obligatoris.", 'error');
+            return;
+        }
 
-        checkLoginStatus();
-        authModal.style.display = "none";
+        try {
+            const response = await fetch(`${API_BASE}/auth/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username: username,
+                    email: email,
+                    password: password,
+                    full_name: fullName,
+                    favorite_pokemon: "Pikachu" // Per defecte
+                })
+            });
 
-        // Netejem el formulari
-        loginInput.value = "";
-        document.getElementById("login-pass").value = "";
-    } else {
-        alert("Si us plau, introdueix usuari i contrasenya.");
-    }
-});
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Error en el registre");
+            }
 
-// 6. Processar REGISTRE (Simulat)
-registerForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const username = regInputUser.value.trim();
-    const password = document.getElementById("reg-pass").value.trim();
+            showNotification("Compte creat correctament! Ara pots iniciar sessió.", 'success');
 
-    // Validació simple (només comprovem que hi hagi usuari i contrasenya)
-    if (username && password) {
-        // Simulem que es crea el compte i fem login directe
-        localStorage.setItem("pokeUser", username);
+            // Canviem a la vista de Login automàticament
+            viewRegister.classList.add("hidden");
+            viewLogin.classList.remove("hidden");
+            loginInput.value = username; // Pre-omplim l'usuari
+            loginInput.focus();
 
-        alert("Compte creat correctament! Benvingut/da.");
+        } catch (error) {
+            console.error("Error registre:", error);
+            showNotification(error.message, 'error');
+        }
+    });
 
-        checkLoginStatus();
-        authModal.style.display = "none";
+// --- FUNCIÓ 2: LOGIN (Sign In) ---
+    loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-        // Netejem el formulari (només usuari i pass)
-        regInputUser.value = "";
-        document.getElementById("reg-pass").value = "";
-    }
-});
+        const username = loginInput.value.trim();
+        const password = document.getElementById("login-pass").value.trim();
+
+        if (!username || !password) {
+            showNotification("Introdueix usuari i contrasenya.", 'error');
+            return;
+        }
+
+        try {
+            // FastAPI utilitza OAuth2 form-data per al login, no JSON
+            const formData = new URLSearchParams();
+            formData.append("username", username);
+            formData.append("password", password);
+
+            const response = await fetch(`${API_BASE}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error("Usuari o contrasenya incorrectes");
+            }
+
+            const data = await response.json();
+
+            // GUARDEM EL TOKEN I L'USUARI
+            localStorage.setItem("pokeToken", data.access_token);
+            localStorage.setItem("pokeUser", data.username);
+            localStorage.setItem("pokeUserId", data.user_id);
+
+            showNotification(`Benvingut/da, ${data.username}!`, 'success');
+
+            checkLoginStatus();
+            authModal.style.display = "none";
+
+            // Netejem formulari
+            loginInput.value = "";
+            document.getElementById("login-pass").value = "";
+
+        } catch (error) {
+            console.error("Error login:", error);
+            showNotification(error.message, 'error');
+        }
+    });
+
+// --- FUNCIÓ 3: LOGOUT ---
+    profileLogoutBtn.addEventListener("click", async () => {
+
+        // Cridem el modal i esperem resposta
+        const isConfirmed = await showConfirm("Segur que vols sortir?");
+
+        if (isConfirmed) {
+            localStorage.clear(); // Esborrem tot
+            checkLoginStatus();
+            profileModal.style.display = "none";
+
+            // Opcional: Mostrar un missatge d'adéu abans de recarregar
+            showNotification("Sessió tancada correctament", 'success');
+
+            // Donem temps a veure el missatge abans de recarregar (opcional)
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+    });
 
 // Executar al principi
 checkLoginStatus();
 
-/* ============================================================
-     GESTIÓ DE GUARDAR EQUIP (NOU)
-     ============================================================ */
-const saveTeamBtn = document.getElementById("save-team-btn");
-const teamNameInput = document.getElementById("team-name-input");
+    /* ============================================================
+         GESTIÓ DE GUARDAR EQUIP (AL BACKEND)
+         ============================================================ */
+    const saveTeamBtn = document.getElementById("save-team-btn");
+    const teamNameInput = document.getElementById("team-name-input");
 
-saveTeamBtn.addEventListener("click", () => {
-    // 1. Validacions
-    const currentUser = localStorage.getItem("pokeUser");
-    if (!currentUser) {
-        alert("Has d'iniciar sessió per guardar equips!");
-        // Obre el modal de login automàticament
-        loginBtn.click();
-        return;
+    // 1. RECUPERAR EL NOM AL CARREGAR LA PÀGINA
+// Si tenim un nom guardat de la sessió anterior, el posem
+    const savedTeamName = localStorage.getItem("pokeBuilder_teamName");
+    if (savedTeamName) {
+        teamNameInput.value = savedTeamName;
     }
 
-    const activePokemons = team.filter(Boolean);
-    if (activePokemons.length === 0) {
-        alert("L'equip està buit! Afegeix almenys un Pokémon.");
-        return;
-    }
+// 2. GUARDAR EL NOM QUAN L'USUARI ESCRIU
+    teamNameInput.addEventListener("input", (e) => {
+        localStorage.setItem("pokeBuilder_teamName", e.target.value);
+    });
 
-    const teamName = teamNameInput.value.trim() || "Equip sense nom";
 
-    // 2. Crear l'objecte de l'equip
-    const newTeam = {
-        id: Date.now(), // ID únic (timestamp)
-        name: teamName,
-        members: team, // L'array de 6 slots actual
-        createdAt: new Date().toISOString()
-    };
+    saveTeamBtn.addEventListener("click", async () => {
+        // 1. Validacions prèvies
+        const token = localStorage.getItem("pokeToken");
 
-    // 3. Guardar al LocalStorage (Simulant BBDD)
-    // Recuperem els equips existents o creem una llista nova
-    let userTeams = JSON.parse(localStorage.getItem(`teams_${currentUser}`)) || [];
+        if (!token) {
+            showNotification("Has d'iniciar sessió per guardar equips al núvol!", 'error');
+            // Opcional: Obrir modal de login automàticament
+            if(loginBtn) loginBtn.click();
+            return;
+        }
 
-    // Afegim el nou equip
-    userTeams.push(newTeam);
+        const activePokemons = team.filter(Boolean);
+        if (activePokemons.length === 0) {
+            showNotification("L'equip està buit! Afegeix almenys un Pokémon.", 'error');
+            return;
+        }
 
-    // Guardem la llista actualitzada
-    localStorage.setItem(`teams_${currentUser}`, JSON.stringify(userTeams));
+        const teamName = teamNameInput.value.trim() || "Equip sense nom";
 
-    // 4. Feedback a l'usuari
-    alert(`Equip "${teamName}" guardat correctament!`);
+        // --- RECUPEREM L'ID SI EXISTEIX ---
+        const existingId = localStorage.getItem("pokeBuilder_teamId");
+        // ----------------------------------
 
-    // Opcional: Netejar l'equip actual després de guardar?
-    // clearTeam();
-});
+        // 2. Preparar les dades pel Backend (Estructura TeamCreate)
+        // Mapegem totes les propietats del set (moviments, objectes, etc.)
+        const teamData = {
+            team_id: existingId || null, // <--- L'ENVIEM AL BACKEND
+            team_name: teamName,
+            format: "gen9vgc2024",
+            description: "Creat amb PokeBuilder Web",
+            team_members: activePokemons.map(p => ({
+                base_pokemon: p.name,
+                nickname: p.name, // O p.nickname si en tinguessis
+
+                // AQUI ESTÀ LA CLAU: Enviem el que hem editat a edit.js
+                item: p.item || null,
+                ability: p.ability || null,
+                nature: p.nature || null,
+                moves: p.moves || [],
+
+                // EVs per defecte (o els que tinguis)
+                evs: p.evs || { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 }
+            }))
+        };
+
+        // 3. Enviar al Servidor
+        try {
+            // Canviem el text del botó per donar feedback
+            const originalText = saveTeamBtn.textContent;
+            saveTeamBtn.textContent = "Guardant...";
+            saveTeamBtn.disabled = true;
+
+            const response = await fetch(`${API_BASE}/teams`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}` // Token JWT d'autenticació
+                },
+                body: JSON.stringify(teamData)
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || "Error guardant al servidor");
+            }
+
+            const result = await response.json();
+
+            // IMPORTANT: Si era un equip nou, ara ja té ID. El guardem per si tornem a clicar "Guardar".
+            localStorage.setItem("pokeBuilder_teamId", result.team_id);
+
+            showNotification(`Equip "${result.team_name}" guardat correctament!`, 'success');
+
+        } catch (error) {
+            console.error("Error save team:", error);
+            showNotification(`No s'ha pogut guardar: ${error.message}`, 'error');
+        } finally {
+            // Restaurem el botó
+            saveTeamBtn.textContent = "Guardar Equip";
+            saveTeamBtn.disabled = false;
+        }
+    });
 
 /* ============================================================
      DATA GRID (TAULA DE CERCA AMB FILTRES JS)
@@ -1023,6 +1439,7 @@ let tableState = {
     filterName: "",
     filterTypes: [], // <-- CANVI: Ara és un array buit []
     minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
+    excludeBanned: false,
     currentPage: 1,  // <--- NOU: Pàgina actual (comença a 1)
     limit: 50,       // <--- NOU: Límit per pàgina
     sortKey: "id", // Per defecte ordenat per ID
@@ -1264,5 +1681,16 @@ const selectPokemonFromTable = (pokemon) => {
             renderTable(); // Cridem directe
         });
     });
+
+    // Listener per al Checkbox de "Només Legals"
+    const filterBannedInput = document.getElementById("filter-banned");
+
+    if (filterBannedInput) {
+        filterBannedInput.addEventListener("change", (e) => {
+            tableState.excludeBanned = e.target.checked;
+            tableState.currentPage = 1; // Tornem a la pàgina 1
+            renderTable();
+        });
+    }
 
 });

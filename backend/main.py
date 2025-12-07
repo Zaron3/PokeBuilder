@@ -88,6 +88,7 @@ class TeamMember(BaseModel):
 
 # Model per crear un equip nou
 class TeamCreate(BaseModel):
+    team_id: Optional[str] = None
     team_name: str
     description: Optional[str] = None
     format: str
@@ -164,7 +165,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), es: Elasticsearc
         raise credentials_exception
 
     # Busquem l'usuari a Elastic
-    query = {"query": {"term": {"username": username}}}
+    query = {"query": {"match": {"username": username}}}
     response = es.search(index="users", body=query)
 
     if response['hits']['total']['value'] == 0:
@@ -203,7 +204,7 @@ def register_user(user_data: UserRegister, es: Elasticsearch = Depends(get_es_cl
 
     # 2. Crear l'objecte usuari segons l'estructura definida
     # Generem un ID basat en el temps (timestamp) per tenir un INT únic
-    new_user_id = int(time.time() * 1000)
+    new_user_id = int(time.time())
 
     hashed_password = get_password_hash(user_data.password)
 
@@ -246,7 +247,7 @@ def login_for_access_token(
     """
     # 1. Buscar l'usuari
     # Nota: OAuth2PasswordRequestForm guarda l'usuari a .username (no importa si és email o nick)
-    query = {"query": {"term": {"username": form_data.username}}}
+    query = {"query": {"match": {"username": form_data.username}}}
 
     try:
         response = es.search(index="users", body=query)
@@ -326,24 +327,40 @@ def create_team(
     Requereix estar autenticat. El 'user_id' s'agafa automàticament del token.
     """
     try:
-        # Convertim el model Pydantic a un diccionari
+        # Convertim el model a diccionari
         team_doc = team_data.dict()
 
-        # Injectem l'usuari automàticament (seguretat: l'usuari no pot mentir sobre qui és)
+        # Extraiem l'ID si existeix i el traiem del document per no duplicar info
+        target_id = team_doc.pop("team_id", None)
+
+        # Injectem l'usuari (Seguretat: sempre el del token)
         team_doc["user_id"] = current_user["username"]
 
-        # Afegim data de creació
-        team_doc["created_at"] = datetime.now().isoformat()
+        # --- BLOC DE DATES CORREGIT ---
+        now_iso = datetime.now().isoformat()
+        team_doc["updated_at"] = now_iso # Sempre actualitzem la data de modificació
 
-        # Guardar a Elasticsearch (deixem que generi l'ID sol)
-        response = es.index(index="teams", document=team_doc)
+        if target_id:
+            # CAS ACTUALITZAR: Recuperem la data original per no perdre-la
+            try:
+                old_doc = es.get(index="teams", id=target_id)
+                # Si existeix, copiem la data de creació antiga al nou document
+                team_doc["created_at"] = old_doc['_source'].get('created_at', now_iso)
+            except Exception:
+                # Si no trobem l'antic (rar), posem la data d'ara
+                team_doc["created_at"] = now_iso
+        else:
+            # CAS NOU: Posem la data d'ara
+            team_doc["created_at"] = now_iso
+        # ------------------------------
 
-        # Forcem un refresc perquè surti immediatament a "Els meus equips"
-        es.indices.refresh(index="teams")
+        # GUARDAR A ELASTICSEARCH
+        # Si passem 'id', Elasticsearch sobreescriu (Update). Si és None, crea nou.
+        response = es.index(index="teams", id=target_id, document=team_doc)
 
         return {
             "success": True,
-            "message": "Equip desat correctament",
+            "message": "Equip actualitzat" if target_id else "Equip creat",
             "team_id": response["_id"],
             "team_name": team_doc["team_name"]
         }
@@ -351,6 +368,57 @@ def create_team(
     except Exception as e:
         print(f"Error guardant equip: {e}")
         raise HTTPException(status_code=500, detail=f"Error guardant l'equip: {str(e)}")
+
+
+# Endpoint: Esborrar Equip ---
+@app.delete("/api/v1/teams/{team_id}")
+def delete_team(
+        team_id: str,
+        current_user: dict = Depends(get_current_user),
+        es: Elasticsearch = Depends(get_es_client)
+):
+    try:
+        # 1. Comprovar que l'equip existeix
+        team_res = es.get(index="teams", id=team_id)
+        team_data = team_res['_source']
+
+        # 2. Comprovar que l'equip pertany a l'usuari que fa la petició (Seguretat)
+        if team_data['user_id'] != current_user['username']:
+            raise HTTPException(status_code=403, detail="No tens permís per esborrar aquest equip.")
+
+        # 3. Esborrar
+        es.delete(index="teams", id=team_id)
+        es.indices.refresh(index="teams") # Refresc immediat
+
+        return {"success": True, "message": "Equip esborrat correctament"}
+
+    except Exception:
+        raise HTTPException(status_code=404, detail="Equip no trobat o error esborrant.")
+
+
+    # --- ENDPOINT D'ANÀLISI DE VULNERABILITAT (IA) ---
+@app.get("/api/v1/teams/vulnerability")
+def get_team_vulnerability(
+        team_ids: List[int] = Query(..., description="Llista d'IDs de Pokédex dels 6 Pokémon de l'equip."),
+        current_user: dict = Depends(get_current_user) # Protecció de la ruta
+):
+    """
+    Analitza un equip de 6 Pokémon i retorna el tipus elemental al qual l'equip
+    és més vulnerable, o si està equilibrat.
+    """
+    if not AI_ENABLED or ai_service is None:
+        raise HTTPException(status_code=503, detail="El servei d'Intel·ligència Artificial no està disponible.")
+
+    if len(team_ids) != 6:
+        raise HTTPException(status_code=400, detail="L'equip ha de tenir exactament 6 Pokémon.")
+
+    try:
+        analysis = ai_service.get_team_vulnerability(team_ids)
+        return analysis
+
+    except Exception as e:
+        print(f"Error analitzant vulnerabilitat de l'equip: {e}")
+        raise HTTPException(status_code=500, detail=f"Error intern del servidor: {str(e)}")
 
 # --- ENDPOINT UNIFICAT: Cerca, Ordenació i Filtre per Tipus ---
 @app.get("/api/v1/pokemon/search")

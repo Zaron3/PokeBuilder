@@ -58,7 +58,7 @@ class RecommendationEngine:
     """
     Motor de recomanació que analitza equips i suggereix Pokémon.
     """
-    
+
     # Pesos per al càlcul de la puntuació final
     WEIGHTS = {
         'defensive': 0.30,
@@ -66,7 +66,7 @@ class RecommendationEngine:
         'diversity': 0.20,
         'stats': 0.30
     }
-    
+
     def __init__(self, type_chart: Dict[str, TypeEffectiveness]):
         """
         Inicialitza el motor de recomanació.
@@ -76,12 +76,12 @@ class RecommendationEngine:
         """
         self.type_chart = type_chart
         self.all_type_names = list(self.type_chart.keys())
-    
+
     def recommend(
-        self,
-        current_team: List[Pokemon],
-        all_pokemon: List[Pokemon],
-        top_n: int = 5
+            self,
+            current_team: List[Pokemon],
+            all_pokemon: List[Pokemon],
+            top_n: int = 5
     ) -> List[Recommendation]:
         """
         Genera recomanacions de Pokémon per complementar l'equip actual.
@@ -96,24 +96,24 @@ class RecommendationEngine:
         """
         if len(current_team) >= 6:
             return []
-        
+
         # Analitzar l'equip actual
         team_analysis = self._analyze_team(current_team)
-        
+
         # Calcular puntuacions per a tots els candidats
         recommendations = []
         for pokemon in all_pokemon:
             # Saltar Pokémon ja presents a l'equip
             if any(p.pokedex_id == pokemon.pokedex_id for p in current_team):
                 continue
-            
+
             rec = self._evaluate_candidate(pokemon, current_team, team_analysis)
             recommendations.append(rec)
-        
+
         # Ordenar per puntuació i retornar top N
         recommendations.sort(key=lambda x: x.score, reverse=True)
         return recommendations[:top_n]
-    
+
     def _analyze_team(self, team: List[Pokemon]) -> Dict:
         """
         Analitza l'equip actual per identificar fortaleses i debilitats.
@@ -130,54 +130,54 @@ class RecommendationEngine:
             'avg_stats': {},       # Estadístiques mitjanes
             'total_members': len(team)
         }
-        
+
         if not team:
             return analysis
-        
+
         # Analitzar debilitats i resistències
         all_weaknesses = {}
         all_resistances = {}
-        
+
         for pokemon in team:
             for poke_type in pokemon.types:
                 analysis['present_types'].add(poke_type)
-                
+
                 if poke_type in self.type_chart:
                     type_data = self.type_chart[poke_type]
-                    
+
                     for weak_type in type_data.double_damage_from:
                         all_weaknesses[weak_type] = all_weaknesses.get(weak_type, 0) + 1
-                    
+
                     for resist_type in type_data.half_damage_from:
                         all_resistances[resist_type] = all_resistances.get(resist_type, 0) + 1
-                    
+
                     for immune_type in type_data.no_damage_from:
                         analysis['immunities'].add(immune_type)
-                    
+
                     for effective_type in type_data.double_damage_to:
                         analysis['offensive_types'].add(effective_type)
-        
+
         # Determinar les debilitats netes de l'equip
         team_weaknesses = {}
-        
+
         for type_name, weak_count in all_weaknesses.items():
             resist_count = all_resistances.get(type_name, 0)
-            
+
             if type_name in analysis['immunities']:
                 continue
-            
+
             if weak_count > resist_count:
                 team_weaknesses[type_name] = weak_count - resist_count
-        
+
         analysis['weaknesses'] = team_weaknesses
         analysis['resistances'] = all_resistances
-        
+
         # Calcular estadístiques mitjanes
         stat_names = ['hp', 'attack', 'defense', 'special_attack', 'special_defense', 'speed']
         for stat in stat_names:
             total = sum(p.stats.get(stat, 0) for p in team)
             analysis['avg_stats'][stat] = total / len(team) if team else 0
-        
+
         return analysis
 
     # ======================================================================
@@ -203,15 +203,15 @@ class RecommendationEngine:
         # Iterar per tots els 18 tipus com a "tipus atacant"
         for attacking_type in self.all_type_names:
             current_multiplier = 1.0
-            
+
             # Comprovar l'efecte de l'atacant contra cada tipus defensiu
             for defense_type_name in candidate_types:
                 if defense_type_name not in self.type_chart:
                     continue
-                
+
                 # Obtenim el perfil del tipus defensiu
                 defense_type_data = self.type_chart[defense_type_name]
-                
+
                 # Comprovem com li afecta el 'attacking_type'
                 if attacking_type in defense_type_data.double_damage_from:
                     current_multiplier *= 2
@@ -220,7 +220,7 @@ class RecommendationEngine:
                 elif attacking_type in defense_type_data.no_damage_from:
                     current_multiplier = 0
                     break # És immune, el multiplicador final és 0
-            
+
             # Classificar el multiplicador final
             if current_multiplier == 0:
                 net_defense["immunities"].add(attacking_type)
@@ -229,17 +229,131 @@ class RecommendationEngine:
             elif current_multiplier < 1: # Inclou x0.5 i x0.25
                 net_defense["resistances"].add(attacking_type)
             # Si current_multiplier == 1, és neutre i no s'afegeix enlloc
-        
+
         return net_defense
+
+    def _calculate_pokemon_vulnerability(self, pokemon: Pokemon) -> Dict[str, float]:
+        """
+        Calcula la vulnerabilitat d'un Pokémon a tots els tipus atacants.
+
+        Args:
+            pokemon: El Pokémon a analitzar.
+
+        Returns:
+            Diccionari amb el tipus atacant com a clau i el multiplicador de dany com a valor.
+        """
+        vulnerabilities = {}
+
+        # Iterar per tots els 18 tipus com a "tipus atacant"
+        for attacking_type in self.all_type_names:
+            current_multiplier = 1.0
+
+            # Comprovar l'efecte de l'atacant contra cada tipus defensiu del Pokémon
+            for defense_type_name in pokemon.types:
+                if defense_type_name not in self.type_chart:
+                    continue
+
+                defense_type_data = self.type_chart[defense_type_name]
+
+                # Comprovem com li afecta el 'attacking_type'
+                if attacking_type in defense_type_data.double_damage_from:
+                    current_multiplier *= 2
+                elif attacking_type in defense_type_data.half_damage_from:
+                    current_multiplier *= 0.5
+                elif attacking_type in defense_type_data.no_damage_from:
+                    current_multiplier = 0
+                    break # És immune, el multiplicador final és 0
+
+            vulnerabilities[attacking_type] = current_multiplier
+
+        return vulnerabilities
+
+    def get_team_vulnerability(self, team: List[Pokemon]) -> Dict[str, any]:
+        """
+        Analitza un equip de Pokémon i determina el tipus elemental al qual l'equip
+        és més vulnerable (màxim multiplicador de dany).
+
+        Args:
+            team: Llista de Pokémon de l'equip (hauria de ser de 6)
+
+        Returns:
+            Diccionari amb l'anàlisi de vulnerabilitat.
+        """
+        if not team:
+            return {
+                "most_vulnerable_type": "N/A",
+                "max_multiplier": 0.0,
+                "is_balanced": True,
+                "vulnerability_details": {}
+            }
+
+        # 1. Calcular la vulnerabilitat màxima de l'equip a cada tipus atacant
+        # team_max_vulnerabilities[type] = max(vulnerability(P, type) for P in team)
+        team_max_vulnerabilities = {type_name: 0.0 for type_name in self.all_type_names}
+
+        # Guardar els detalls per al resultat final
+        vulnerability_details = {}
+
+        for pokemon in team:
+            poke_vulnerabilities = self._calculate_pokemon_vulnerability(pokemon)
+
+            # Actualitzar la vulnerabilitat màxima de l'equip
+            for type_name, multiplier in poke_vulnerabilities.items():
+                if multiplier > team_max_vulnerabilities[type_name]:
+                    team_max_vulnerabilities[type_name] = multiplier
+
+                # Guardar detalls per al resultat
+                if type_name not in vulnerability_details:
+                    vulnerability_details[type_name] = []
+
+                # Només afegim si la vulnerabilitat és > 1 (és una debilitat)
+                if multiplier > 1.0:
+                    vulnerability_details[type_name].append({
+                        "pokemon_name": pokemon.name.capitalize(),
+                        "multiplier": multiplier
+                    })
+
+        # 2. Trobar el tipus amb el multiplicador màxim
+        most_vulnerable_type = "N/A"
+        max_multiplier = 0.0
+
+        for type_name, multiplier in team_max_vulnerabilities.items():
+            if multiplier > max_multiplier:
+                max_multiplier = multiplier
+                most_vulnerable_type = type_name
+
+        # 3. Determinar si l'equip està equilibrat
+        # Si el màxim és 1.0 o menys, l'equip no té cap debilitat x2 o x4.
+        is_balanced = max_multiplier <= 1.0
+
+        # 4. Preparar el resultat final
+        result = {
+            "most_vulnerable_type": most_vulnerable_type.capitalize() if most_vulnerable_type != "N/A" else "N/A",
+            "max_multiplier": max_multiplier,
+            "is_balanced": is_balanced,
+            "vulnerability_details": {}
+        }
+
+        # Només incloem els detalls de les debilitats (multiplicador > 1.0)
+        for type_name, details in vulnerability_details.items():
+            if team_max_vulnerabilities[type_name] > 1.0:
+                # Ordenem els detalls per multiplicador descendent
+                details.sort(key=lambda x: x['multiplier'], reverse=True)
+                result["vulnerability_details"][type_name.capitalize()] = {
+                    "max_multiplier": team_max_vulnerabilities[type_name],
+                    "pokemons_affected": details
+                }
+
+        return result
     # ======================================================================
     # ======================================================================
 
-    
+
     def _evaluate_candidate(
-        self,
-        candidate: Pokemon,
-        team: List[Pokemon],
-        team_analysis: Dict
+            self,
+            candidate: Pokemon,
+            team: List[Pokemon],
+            team_analysis: Dict
     ) -> Recommendation:
         """
         Avalua un candidat i calcula la seva puntuació.
@@ -249,43 +363,43 @@ class RecommendationEngine:
         """
         all_reasons = []
         all_warnings = []
-        
+
         # 1. Puntuació defensiva
         defensive_score, def_reasons, def_warnings = self._calculate_defensive_score(
             candidate, team_analysis
         )
         all_reasons.extend(def_reasons)
         all_warnings.extend(def_warnings)
-        
+
         # 2. Puntuació ofensiva
         offensive_score, off_reasons, off_warnings = self._calculate_offensive_score(
             candidate, team_analysis
         )
         all_reasons.extend(off_reasons)
         all_warnings.extend(off_warnings)
-        
+
         # 3. Puntuació de diversitat
         diversity_score, div_reasons, div_warnings = self._calculate_diversity_score(
             candidate, team_analysis
         )
         all_reasons.extend(div_reasons)
         all_warnings.extend(div_warnings)
-        
+
         # 4. Puntuació d'estadístiques
         stats_score, stat_reasons, stat_warnings = self._calculate_stats_score(
             candidate, team_analysis
         )
         all_reasons.extend(stat_reasons)
         all_warnings.extend(stat_warnings)
-        
+
         # Calcular puntuació final
         final_score = (
-            defensive_score * self.WEIGHTS['defensive'] +
-            offensive_score * self.WEIGHTS['offensive'] +
-            diversity_score * self.WEIGHTS['diversity'] +
-            stats_score * self.WEIGHTS['stats']
+                defensive_score * self.WEIGHTS['defensive'] +
+                offensive_score * self.WEIGHTS['offensive'] +
+                diversity_score * self.WEIGHTS['diversity'] +
+                stats_score * self.WEIGHTS['stats']
         )
-        
+
         return Recommendation(
             pokemon=candidate,
             score=final_score,
@@ -296,14 +410,14 @@ class RecommendationEngine:
             reasoning=all_reasons,
             warnings=all_warnings
         )
-    
+
     # ======================================================================
     # ========= _calculate_defensive_score REFACTORITZAT ===================
     # ======================================================================
     def _calculate_defensive_score(
-        self,
-        candidate: Pokemon,
-        team_analysis: Dict
+            self,
+            candidate: Pokemon,
+            team_analysis: Dict
     ) -> Tuple[float, List[str], List[str]]:
         """
         Calcula la puntuació defensiva basada en el perfil defensiu NET.
@@ -315,13 +429,13 @@ class RecommendationEngine:
         score = 50.0
         reasons = set()
         warnings = set()
-        
+
         team_weaknesses = team_analysis['weaknesses']
         team_immunities = team_analysis['immunities']
-        
+
         # 1. Obtenir el perfil defensiu NET del candidat
         candidate_net_defense = self._calculate_net_effectiveness(candidate.types)
-        
+
         # 2. PROS: Comprovar si les resistències/immunitats del candidat
         #    cobreixen les debilitats de l'equip.
         for resist_type in candidate_net_defense["resistances"]:
@@ -329,13 +443,13 @@ class RecommendationEngine:
                 bonus = team_weaknesses[resist_type] * 10
                 score += bonus
                 reasons.add(f"Resisteix {resist_type.capitalize()}, una debilitat de l'equip")
-        
+
         for immune_type in candidate_net_defense["immunities"]:
             if immune_type in team_weaknesses:
                 bonus = team_weaknesses[immune_type] * 15
                 score += bonus
                 reasons.add(f"És immune a {immune_type.capitalize()}, una debilitat crítica")
-        
+
         # 3. CONTRES: Comprovar si les debilitats NETES del candidat
         #    creen nous problemes o n'apilen d'existents.
         for weak_type in candidate_net_defense["weaknesses"]:
@@ -344,27 +458,27 @@ class RecommendationEngine:
 
             if weak_type in team_weaknesses:
                 # Penalització per APILAR debilitats
-                penalty = team_weaknesses[weak_type] * 7 
+                penalty = team_weaknesses[weak_type] * 7
                 score -= penalty
                 warnings.add(f"Comparteix debilitat a {weak_type.capitalize()}")
             else:
                 # Penalització per AFEGIR debilitat NOVA
-                penalty = 5 
+                penalty = 5
                 score -= penalty
                 warnings.add(f"Afegeix una nova debilitat a {weak_type.capitalize()}")
-        
+
         # Normalitzar a 0-100
         score = max(0, min(100, score))
-        
+
         return score, list(reasons), list(warnings)
     # ======================================================================
     # ======================================================================
 
 
     def _calculate_offensive_score(
-        self,
-        candidate: Pokemon,
-        team_analysis: Dict
+            self,
+            candidate: Pokemon,
+            team_analysis: Dict
     ) -> Tuple[float, List[str], List[str]]:
         """
         Calcula la puntuació ofensiva.
@@ -375,23 +489,23 @@ class RecommendationEngine:
         score = 50.0
         reasons = []
         warnings = []
-        
+
         # Tipus que l'equip JA colpeja com a súper-efectiu
         team_offensive_coverage = team_analysis['offensive_types']
-        
+
         # Tipus que el candidat pot colpejar que l'equip NO podia
         candidate_new_coverage = set()
-        
+
         for poke_type in candidate.types:
             if poke_type not in self.type_chart:
                 continue
-            
+
             type_data = self.type_chart[poke_type]
-            
+
             for effective_type in type_data.double_damage_to:
                 if effective_type not in team_offensive_coverage:
                     candidate_new_coverage.add(effective_type)
-        
+
         if candidate_new_coverage:
             # Bonificació per cada nou tipus que pot colpejar
             bonus = len(candidate_new_coverage) * 5
@@ -402,16 +516,16 @@ class RecommendationEngine:
         else:
             score -= 10
             warnings.append("No afegeix nova cobertura ofensiva súper-efectiva")
-        
+
         # Normalitzar a 0-100
         score = max(0, min(100, score))
-        
+
         return score, reasons, warnings
-    
+
     def _calculate_diversity_score(
-        self,
-        candidate: Pokemon,
-        team_analysis: Dict
+            self,
+            candidate: Pokemon,
+            team_analysis: Dict
     ) -> Tuple[float, List[str], List[str]]:
         """
         Calcula la puntuació de diversitat.
@@ -422,13 +536,13 @@ class RecommendationEngine:
         score = 50.0
         reasons = []
         warnings = []
-        
+
         # Tipus defensius ja presents a l'equip
         present_types = team_analysis['present_types']
-        
+
         # Bonificació per tipus nous
         new_types = [t for t in candidate.types if t not in present_types]
-        
+
         if len(new_types) == 2:
             score += 30
             reasons.append(
@@ -440,21 +554,21 @@ class RecommendationEngine:
         else:
             score -= 10
             warnings.append("Tipus defensius ja presents a l'equip")
-        
+
         # Bonificació per doble tipus (més versatilitat defensiva)
         if len(candidate.types) == 2:
             score += 10
             reasons.append("Doble tipus proporciona versatilitat defensiva")
-        
+
         # Normalitzar a 0-100
         score = max(0, min(100, score))
-        
+
         return score, reasons, warnings
-    
+
     def _calculate_stats_score(
-        self,
-        candidate: Pokemon,
-        team_analysis: Dict
+            self,
+            candidate: Pokemon,
+            team_analysis: Dict
     ) -> Tuple[float, List[str], List[str]]:
         """
         Calcula la puntuació d'estadístiques.
@@ -463,13 +577,13 @@ class RecommendationEngine:
             Tupla (puntuació, raons, avisos)
         """
         avg_stats = team_analysis['avg_stats']
-        
+
         if not avg_stats or not any(avg_stats.values()):
             return 50.0, [], [] # Equip buit, puntuació neutral
-        
+
         score = 50.0
         reasons = []
-        
+
         stat_names_cat = {
             'hp': 'HP',
             'attack': 'Atac',
@@ -484,11 +598,11 @@ class RecommendationEngine:
         for stat, avg in avg_stats.items():
             if avg < 80: # Llindar genèric per "baix"
                 low_stats.append(stat)
-        
+
         for stat in low_stats:
             candidate_stat = candidate.stats.get(stat, 0)
             team_avg = avg_stats.get(stat, 0)
-            
+
             # Bonificació si el candidat és significativament millor que la mitjana
             if candidate_stat > team_avg + 15:
                 bonus = (candidate_stat - team_avg) / 10 # Bonus dinàmic
@@ -528,10 +642,10 @@ class RecommendationEngine:
         if total_stats > 520:
             score += 5
             reasons.append(f"Estadístiques base totals altes ({total_stats})")
-        
+
         # Normalitzar a 0-100
         score = max(0, min(100, score))
-        
+
         return score, reasons, [] # No hi ha avisos per estadístiques
 
 
@@ -553,16 +667,16 @@ def format_recommendation_text(rec: Recommendation) -> str:
         "",
         "**Per què aquest Pokémon?**"
     ]
-    
+
     # Mostrar un màxim de 4 raons principals per claredat
     main_reasons = rec.reasoning[:4]
-    
+
     if not main_reasons:
         lines.append("• Aporta un equilibri general a l'equip.")
     else:
         for reason in main_reasons:
             lines.append(f"• {reason}")
-    
+
     # (NOVETAT) Afegir secció d'avisos (contres) si n'hi ha
     if rec.warnings:
         lines.append("")
@@ -578,5 +692,5 @@ def format_recommendation_text(rec: Recommendation) -> str:
         f"• Diversitat: {rec.diversity_score:.1f}/100",
         f"• Estadístiques: {rec.stats_score:.1f}/100"
     ])
-    
+
     return "\n".join(lines)

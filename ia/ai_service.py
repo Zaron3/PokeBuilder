@@ -24,7 +24,7 @@ class AIService:
     """
     Servei que gestiona les recomanacions d'IA connectant-se a Elasticsearch.
     """
-    
+
     def __init__(self, es_host: str = "http://localhost:9200"):
         """
         Inicialitza el servei d'IA.
@@ -35,13 +35,13 @@ class AIService:
         self.es = Elasticsearch(hosts=[es_host], verify_certs=False)
         self.type_chart = {}
         self.engine = None
-        
+
         # Carregar dades de tipus
         self._load_type_chart()
-        
+
         # Inicialitzar motor de recomanació
         self.engine = RecommendationEngine(self.type_chart)
-    
+
     def _load_type_chart(self):
         """
         Carrega la informació de tipus des d'Elasticsearch.
@@ -55,7 +55,7 @@ class AIService:
                     "size": 100
                 }
             )
-            
+
             for hit in response['hits']['hits']:
                 type_data = hit['_source']
                 self.type_chart[type_data['name']] = TypeEffectiveness(
@@ -67,13 +67,13 @@ class AIService:
                     half_damage_to=type_data.get('half_damage_to', []),
                     no_damage_to=type_data.get('no_damage_to', [])
                 )
-            
+
             print(f"✓ Carregats {len(self.type_chart)} tipus")
-            
+
         except Exception as e:
             print(f"✗ Error carregant tipus: {e}")
             raise
-    
+
     def get_pokemon_by_ids(self, pokedex_ids: List[int]) -> List[Pokemon]:
         """
         Obté Pokémon per IDs des d'Elasticsearch.
@@ -90,7 +90,7 @@ class AIService:
 
         pokemon_map = {}
         pokemon_list = []
-        
+
         try:
             response = self.es.search(
                 index="pokemon",
@@ -101,7 +101,7 @@ class AIService:
                     "size": len(pokedex_ids)
                 }
             )
-            
+
             for hit in response['hits']['hits']:
                 data = hit['_source']
                 pokemon = Pokemon(
@@ -111,7 +111,7 @@ class AIService:
                     stats=data['stats']
                 )
                 pokemon_map[data['pokedex_id']] = pokemon
-            
+
             # Reconstruir la llista en l'ordre original sol·licitat
             for pid in pokedex_ids:
                 if pid in pokemon_map:
@@ -121,10 +121,10 @@ class AIService:
 
         except Exception as e:
             print(f"Error obtenint Pokémon per IDs {pokedex_ids}: {e}")
-        
+
         return pokemon_list
-    
-    def get_all_pokemon(self, limit: int = 1000) -> List[Pokemon]:
+
+    def get_all_pokemon(self, limit: int = 1000, exclude_banned: bool = True) -> List[Pokemon]:
         """
         Obté tots els Pokémon disponibles.
         
@@ -135,14 +135,23 @@ class AIService:
             Llista de tots els Pokémon
         """
         try:
+            query = {"match_all": {}}
+
+            if exclude_banned:
+                query = {
+                    "term": {
+                        "is_banned": False
+                    }
+                }
+
             response = self.es.search(
                 index="pokemon",
                 body={
-                    "query": {"match_all": {}},
+                    "query": query,
                     "size": limit
                 }
             )
-            
+
             pokemon_list = []
             for hit in response['hits']['hits']:
                 data = hit['_source']
@@ -152,17 +161,17 @@ class AIService:
                     types=data['types'],
                     stats=data['stats']
                 ))
-            
+
             return pokemon_list
-            
+
         except Exception as e:
             print(f"Error obtenint tots els Pokémon: {e}")
             return []
-    
+
     def recommend_pokemon(
-        self,
-        team_ids: List[int],
-        top_n: int = 5
+            self,
+            team_ids: List[int],
+            top_n: int = 5
     ) -> List[Dict]:
         """
         Genera recomanacions de Pokémon per a un equip.
@@ -176,16 +185,16 @@ class AIService:
         """
         # Obtenir Pokémon de l'equip actual
         current_team = self.get_pokemon_by_ids(team_ids)
-        
+
         if len(current_team) >= 6:
             return []
-        
+
         # Obtenir tots els Pokémon disponibles
-        all_pokemon = self.get_all_pokemon()
-        
+        all_pokemon = self.get_all_pokemon(exclude_banned=True)
+
         # Generar recomanacions
         recommendations = self.engine.recommend(current_team, all_pokemon, top_n)
-        
+
         # Convertir a format de diccionari per a l'API
         result = []
         for rec in recommendations:
@@ -206,9 +215,9 @@ class AIService:
                 "warnings": rec.warnings, # (NOVETAT) Afegit camp d'avisos
                 "explanation": format_recommendation_text(rec)
             })
-        
+
         return result
-    
+
     def analyze_team(self, team_ids: List[int]) -> Dict:
         """
         Analitza un equip i retorna les seves fortaleses i debilitats.
@@ -220,7 +229,7 @@ class AIService:
             Diccionari amb l'anàlisi de l'equip
         """
         current_team = self.get_pokemon_by_ids(team_ids)
-        
+
         if not current_team:
             return {
                 "team_size": 0,
@@ -230,10 +239,10 @@ class AIService:
                 "type_coverage": [],
                 "avg_stats": {}
             }
-        
+
         # Utilitzar el mètode d'anàlisi del motor
         analysis = self.engine._analyze_team(current_team)
-        
+
         return {
             "team_size": len(current_team),
             "weaknesses": analysis['weaknesses'],
@@ -244,6 +253,31 @@ class AIService:
             "present_types": list(analysis['present_types'])
         }
 
+    def get_team_vulnerability(self, team_ids: List[int]) -> Dict:
+        """
+        Analitza un equip i retorna la seva vulnerabilitat màxima de tipus.
+
+        Args:
+            team_ids: Llista d'IDs dels Pokémon de l'equip
+
+        Returns:
+            Diccionari amb l'anàlisi de vulnerabilitat.
+        """
+        current_team = self.get_pokemon_by_ids(team_ids)
+
+        if not current_team:
+            return {
+                "most_vulnerable_type": "N/A",
+                "max_multiplier": 0.0,
+                "is_balanced": True,
+                "vulnerability_details": {}
+            }
+
+        # Utilitzar el mètode d'anàlisi de vulnerabilitat del motor
+        vulnerability_analysis = self.engine.get_team_vulnerability(current_team)
+
+        return vulnerability_analysis
+
 
 # Funció auxiliar per a testing
 def test_ai_service():
@@ -251,29 +285,29 @@ def test_ai_service():
     Funció de test per verificar el funcionament del servei.
     """
     print("=== Test del Servei d'IA ===\n")
-    
+
     try:
         # Inicialitzar servei
         print("1. Inicialitzant servei...")
         service = AIService()
         print("   ✓ Servei inicialitzat\n")
-        
+
         # Test amb un equip d'exemple
         print("2. Provant recomanacions amb equip d'exemple...")
         team_ids = [1, 4, 7]  # Bulbasaur, Charmander, Squirtle
-        
+
         print(f"   Equip actual: {team_ids}")
-        
+
         # Analitzar equip
         print("\n3. Analitzant equip...")
         analysis = service.analyze_team(team_ids)
         print(f"   Tipus presents: {analysis['present_types']}")
         print(f"   Debilitats principals: {list(analysis['weaknesses'].keys())[:5]}")
-        
+
         # Obtenir recomanacions
         print("\n4. Generant recomanacions...")
         recommendations = service.recommend_pokemon(team_ids, top_n=3)
-        
+
         print(f"\n   Top {len(recommendations)} recomanacions:")
         for i, rec in enumerate(recommendations, 1):
             print(f"\n   {i}. {rec['name'].capitalize()} (#{rec['pokedex_id']})")
@@ -281,15 +315,15 @@ def test_ai_service():
             print(f"      Raons principals (PROS):")
             for reason in rec['reasoning'][:3]:
                 print(f"      • {reason}")
-            
+
             if rec['warnings']:
                 print(f"      Avisos (CONTRES):")
                 for warning in rec['warnings']:
                     print(f"      • {warning}")
-        
+
         print("\n✓ Test completat amb èxit!")
         return True
-        
+
     except Exception as e:
         print(f"\n✗ Error durant el test: {e}")
         import traceback

@@ -104,6 +104,22 @@
 
         <h2 style="margin-bottom: 20px; padding-left: 5px;">Cercador de Pokémon</h2>
 
+        <div class="table-toolbar">
+            <div class="toolbar-left">
+                <span class="toolbar-title">Filtres Avançats</span>
+            </div>
+
+            <div class="toolbar-right">
+                <label class="legal-toggle" for="filter-banned">
+                    <span class="toggle-label">Només Legals (VGC)</span>
+                    <div class="relative-switch">
+                        <input type="checkbox" id="filter-banned">
+                        <span class="slider round"></span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
         <div class="datagrid-container">
             <table class="pokemon-table">
                 <thead>
@@ -138,7 +154,7 @@
 
                 <tr class="filter-row">
                     <th></th> <th><input type="text" id="filter-id" placeholder="#" class="table-input"></th>
-                    <th><input type="text" id="filter-name" placeholder="Filtra per nom..." class="table-input"></th>
+                    <th> <input type="text" id="filter-name" placeholder="Filtra per nom..." class="table-input" style="flex: 1;"></th>
                     <th colspan="1"></th>
                     <th><input type="number" id="filter-hp" placeholder="Min" class="table-input stat-input"></th>
                     <th><input type="number" id="filter-atk" placeholder="Min" class="table-input stat-input"></th>
@@ -292,15 +308,12 @@
             </div>
 
             <form id="form-register" class="auth-form">
-                <div class="input-group">
-                    <label>Nom d'Usuari</label>
-                    <input type="text" id="reg-user" placeholder="Nom..." required>
-                </div>
-                <div class="input-group">
-                    <label>Contrasenya</label>
-                    <input type="password" id="reg-pass" placeholder="••••••" required>
-                </div>
+                <input type="text" id="reg-user" placeholder="Nom d'usuari" required>
 
+                <input type="email" id="reg-email" placeholder="Correu electrònic" required>
+                <input type="text" id="reg-fullname" placeholder="Nom complet">
+
+                <input type="password" id="reg-pass" placeholder="Contrasenya" required>
                 <button type="submit" class="ui-btn primary full">Crear Compte</button>
             </form>
 
@@ -326,7 +339,7 @@
                     <span class="badge">Entrenador</span>
                 </div>
             </div>
-            <button id="profile-logout-btn" class="ui-btn ghost red-text small">
+            <button id="profile-logout-btn" class="ui-btn ghost red-text small" style="left: -20px;position: relative;">
                 Tancar Sessió
             </button>
         </div>
@@ -334,12 +347,26 @@
         <hr class="divider">
 
         <div class="profile-body">
-            <h3 class="section-label" style="margin-bottom: 15px;">Els meus Equips</h3>
+            <h3 class="section-label" style="margin-bottom: 15px; padding: 10px;">Els meus Equips</h3>
 
             <div id="user-teams-list" class="teams-list-container">
             </div>
         </div>
 
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<div id="confirm-modal" class="modal" style="z-index: 20000;">
+    <div class="modal-content" style="max-width: 350px; text-align: center; border: 1px solid var(--ring);">
+        <h3 style="margin-bottom: 10px;">⚠️ Estàs segur?</h3>
+        <p id="confirm-text" style="color: #aaa; margin-bottom: 20px;">...</p>
+
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button id="btn-cancel-confirm" class="ui-btn ghost small">Cancel·lar</button>
+            <button id="btn-accept-confirm" class="ui-btn primary small">Acceptar</button>
+        </div>
     </div>
 </div>
 

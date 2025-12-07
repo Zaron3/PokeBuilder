@@ -1,12 +1,9 @@
 /* ============================================================
-   POKEBUILDER — LÒGICA DE L'EDITOR
-   Gestiona l'edició del Pokémon: moviments, habilitats, 
-   naturaleses i objectes.
+   POKEBUILDER — EDITOR (MODALS UNIFICATS)
    ============================================================ */
 
 const API_BASE = "http://127.0.0.1:8000/api/v1";
 
-// Llista estàndard de naturaleses
 const NATURES = [
     "Adamant", "Bashful", "Bold", "Brave", "Calm", "Careful", "Docile",
     "Gentle", "Hardy", "Hasty", "Impish", "Jolly", "Lax", "Lonely",
@@ -14,65 +11,47 @@ const NATURES = [
     "Relaxed", "Sassy", "Serious", "Timid"
 ];
 
-// --- DADES HARDCODED PER PROVES (MOCK) ---
-const MOCK_DATA = {
-    abilities: [
-        { ability: { name: "intimidate" } },
-        { ability: { name: "levitate" } },
-        { ability: { name: "static" } },
-        { ability: { name: "pressure" } },
-        { ability: { name: "flash-fire" } },
-        { ability: { name: "overgrow" } },
-        { ability: { name: "blaze" } },
-        { ability: { name: "torrent" } }
-    ],
-    moves: [
-        { move: { name: "protect" } },
-        { move: { name: "toxic" } },
-        { move: { name: "earthquake" } },
-        { move: { name: "thunderbolt" } },
-        { move: { name: "ice-beam" } },
-        { move: { name: "flamethrower" } },
-        { move: { name: "surf" } },
-        { move: { name: "psychic" } },
-        { move: { name: "shadow-ball" } },
-        { move: { name: "roost" } },
-        { move: { name: "u-turn" } },
-        { move: { name: "knock-off" } },
-        { move: { name: "close-combat" } },
-        { move: { name: "swords-dance" } },
-        { move: { name: "stealth-rock" } },
-        { move: { name: "hydro-pump" } },
-        { move: { name: "fire-blast" } },
-        { move: { name: "solar-beam" } }
-    ]
-};
-
-/* ============================================================
-   GESTIÓ DE L'ESTAT
-   ============================================================ */
-// Convertim l'índex a número per poder fer càlculs (prev/next)
+// ESTAT GLOBAL
 const editIndex = parseInt(localStorage.getItem("editIndex"), 10);
-const savedTeam = JSON.parse(localStorage.getItem("currentTeam") || "[]");
+const savedData = localStorage.getItem("pokeBuilder_team");
+const savedTeam = savedData ? JSON.parse(savedData) : [];
 const poke      = savedTeam[editIndex];
 
-// Validar que existeixin dades per evitar errors
+// Variables per als Modals
+let availableMoves = [];
+let currentMoveSlot = null;
+
 if (!poke) {
     alert("Error: No s'ha trobat el Pokémon.");
     window.location.href = "index.html";
 }
 
-/* ============================================================
-   ELEMENTS DEL DOM
-   ============================================================ */
+// --- DOM ELEMENTS ---
 const nameEl    = document.getElementById("edit-name");
 const idEl      = document.getElementById("edit-id");
 const spriteEl  = document.getElementById("edit-sprite");
-
 const saveBtn   = document.getElementById("save-btn");
 const cancelBtn = document.getElementById("cancel-btn");
 
-// Elements de Navegació Lateral (NOU)
+// Inputs Formuari
+const abilitySelect = document.getElementById("edit-ability");
+const natureSelect  = document.getElementById("edit-nature");
+const itemInput     = document.getElementById("edit-item"); // Ara és readonly
+const moveInputs    = [1, 2, 3, 4].map(i => document.getElementById(`move-${i}`));
+
+// Modal Moviments
+const moveModal = document.getElementById("move-picker-modal");
+const moveSearchInput = document.getElementById("move-search-input");
+const movesListContainer = document.getElementById("moves-list-container");
+const closeMoveModalBtn = document.getElementById("close-move-modal");
+
+// Modal Objectes (NOU)
+const itemModal = document.getElementById("item-picker-modal");
+const itemSearchInput = document.getElementById("item-search-input");
+const itemsListContainer = document.getElementById("items-list-container");
+const closeItemModalBtn = document.getElementById("close-item-modal");
+
+// Navegació
 const navPrev = document.getElementById('nav-prev');
 const navNext = document.getElementById('nav-next');
 
@@ -84,167 +63,230 @@ idEl.textContent   = "#" + String(poke.pokedex_id).padStart(3, "0");
 spriteEl.src       = poke.sprite_url;
 
 /* ============================================================
-   FUNCIONS DE NAVEGACIÓ (LATERALS)
+   FUNCIONS DE DADES
    ============================================================ */
-// Helper per configurar una targeta lateral
-const setupNavCard = (cardElement, targetIndex) => {
-    // Verifiquem si l'índex està dins del rang (0-5) i si l'slot té un Pokémon
-    if (targetIndex >= 0 && targetIndex <= 5 && savedTeam[targetIndex]) {
-
-        const neighborPoke = savedTeam[targetIndex];
-
-        // 1. Fem visible la targeta
-        cardElement.classList.remove('hidden');
-
-        // 2. Omplim les dades (imatge i nom)
-        // Nota: Assegura't que el teu HTML té els elements .nav-sprite i .nav-name
-        const img = cardElement.querySelector('.nav-sprite');
-        const name = cardElement.querySelector('.nav-name');
-
-        if (img) img.src = neighborPoke.sprite_url;
-        if (name) name.textContent = neighborPoke.name.toUpperCase();
-
-        // 3. Afegim l'event de clic
-        cardElement.onclick = () => {
-            // Guardem l'índex nou a localStorage i recarreguem
-            localStorage.setItem("editIndex", targetIndex);
-            window.location.reload();
-        };
-
-    } else {
-        // Si no hi ha Pokémon o estem fora de rang, amaguem la targeta
-        cardElement.classList.add('hidden');
-    }
-};
-
-// Configurem l'anterior i el següent
-setupNavCard(navPrev, editIndex - 1);
-setupNavCard(navNext, editIndex + 1);
-
-
-/* ============================================================
-   CÀRREGA DE DADES (DETAILS)
-   ============================================================ */
-async function loadDetails() {
-    let data = {};
-
+async function fetchAbilities(id) {
     try {
-        // 1. Intentem connectar amb l'API real
-        const res = await fetch(`${API_BASE}/pokemon/${poke.pokedex_id}`);
+        const res = await fetch(`${API_BASE}/pokemon/${id}/abilities`);
+        return res.ok ? await res.json() : [];
+    } catch (e) { return []; }
+}
 
-        if (res.ok) {
-            data = await res.json();
-        } else {
-            console.warn("⚠️ API retornada amb error (404/500). Usant dades Mock.");
-        }
-
-    } catch (err) {
-        console.warn("⚠️ API no disponible (Connection Refused). Usant dades Mock.");
-    }
-
-    // --- LÒGICA DE FALLBACK (HARDCODED) ---
-    if (!data.moves || data.moves.length === 0) {
-        console.log("ℹ️ Injectant moviments de prova.");
-        data.moves = MOCK_DATA.moves;
-    }
-
-    if (!data.abilities || data.abilities.length === 0) {
-        console.log("ℹ️ Injectant habilitats de prova.");
-        data.abilities = MOCK_DATA.abilities;
-    }
-
-    // --- RENDERITZAT DELS SELECTS ---
+async function fetchMoves(id) {
     try {
-        // 1. Omplir Moviments (Dropdowns)
-        const moves = (data.moves || []).sort((a, b) => {
-            const nameA = a.move ? a.move.name : a;
-            const nameB = b.move ? b.move.name : b;
-            return nameA.localeCompare(nameB);
-        });
+        const res = await fetch(`${API_BASE}/pokemon/${id}/moves`);
+        return res.ok ? await res.json() : [];
+    } catch (e) { return []; }
+}
 
-        [1, 2, 3, 4].forEach((num, idx) => {
-            const sel = document.getElementById(`move-${num}`);
-            sel.innerHTML = '<option value="">- Cap -</option>';
-
-            moves.forEach(m => {
-                const mName = m.move ? m.move.name : m;
-                const opt = document.createElement("option");
-                opt.value = mName;
-                opt.textContent = mName.charAt(0).toUpperCase() + mName.slice(1);
-                sel.appendChild(opt);
-            });
-
-            if (poke.savedMoves && poke.savedMoves[idx]) {
-                sel.value = poke.savedMoves[idx];
-            }
-        });
-
-        // 2. Omplir Habilitats
-        const abSel = document.getElementById("edit-ability");
-        abSel.innerHTML = "";
-
-        (data.abilities || []).forEach(ab => {
-            const aName = ab.ability ? ab.ability.name : ab;
-            const opt = document.createElement("option");
-            opt.value = aName;
-            opt.textContent = aName.charAt(0).toUpperCase() + aName.slice(1);
-            abSel.appendChild(opt);
-        });
-
-        if (poke.savedAbility) {
-            abSel.value = poke.savedAbility;
-        } else if (abSel.options.length > 0) {
-            abSel.selectedIndex = 0;
-        }
-
-        // 3. Omplir Naturaleses
-        const natSel = document.getElementById("edit-nature");
-        if (natSel.options.length === 0) {
-            NATURES.forEach(n => {
-                const opt = document.createElement("option");
-                opt.value = n;
-                opt.textContent = n;
-                natSel.appendChild(opt);
-            });
-        }
-
-        if (poke.savedNature) {
-            natSel.value = poke.savedNature;
-        }
-
-        // 4. Restaurar Objecte
-        if (poke.savedItem) {
-            document.getElementById("edit-item").value = poke.savedItem;
-        }
-
-    } catch (renderErr) {
-        console.error("Error pintant la interfície:", renderErr);
-    }
+async function searchItems(query) {
+    if (!query || query.length < 2) return [];
+    try {
+        const res = await fetch(`${API_BASE}/items/search?q=${query}`);
+        return res.ok ? await res.json() : [];
+    } catch (e) { return []; }
 }
 
 /* ============================================================
-   LISTENERS D'EVENTS
+   LÒGICA MODAL MOVIMENTS
    ============================================================ */
-saveBtn.addEventListener("click", () => {
-    // Capturar dades del formulari
-    poke.savedMoves   = [1, 2, 3, 4].map(i => document.getElementById(`move-${i}`).value);
-    poke.savedAbility = document.getElementById("edit-ability").value;
-    poke.savedNature  = document.getElementById("edit-nature").value;
-    poke.savedItem    = document.getElementById("edit-item").value;
+const openMovePicker = (slotIndex) => {
+    currentMoveSlot = slotIndex;
+    moveSearchInput.value = "";
+    renderMoveList(availableMoves);
+    moveModal.style.display = "block";
+    moveSearchInput.focus();
+};
 
-    // Guardar al LocalStorage (persistència)
-    savedTeam[editIndex] = poke;
-    localStorage.setItem("currentTeam", JSON.stringify(savedTeam));
+const closeMovePicker = () => {
+    moveModal.style.display = "none";
+    currentMoveSlot = null;
+};
 
-    // Redirigir a la pàgina principal
-    window.location.href = "index.html";
+const renderMoveList = (moves) => {
+    movesListContainer.innerHTML = "";
+    // Opció buida
+    const empty = document.createElement("div");
+    empty.className = "move-option";
+    empty.style.color = "#ef4444";
+    empty.textContent = "- Treure Moviment -";
+    empty.onclick = () => selectMove("");
+    movesListContainer.appendChild(empty);
+
+    moves.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "move-option";
+        div.textContent = m.name.charAt(0).toUpperCase() + m.name.slice(1);
+        div.onclick = () => selectMove(m.name);
+        movesListContainer.appendChild(div);
+    });
+};
+
+const selectMove = (moveName) => {
+    if (currentMoveSlot !== null) {
+        const displayValue = moveName ? moveName.charAt(0).toUpperCase() + moveName.slice(1) : "";
+        moveInputs[currentMoveSlot].value = displayValue;
+        moveInputs[currentMoveSlot].dataset.value = moveName;
+    }
+    closeMovePicker();
+};
+
+moveSearchInput.addEventListener("input", (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = availableMoves.filter(m => m.name.toLowerCase().includes(term));
+    renderMoveList(filtered);
 });
 
-cancelBtn.addEventListener("click", () => {
-    window.location.href = "index.html";
-});
+moveInputs.forEach((inp, idx) => inp.addEventListener("click", () => openMovePicker(idx)));
+closeMoveModalBtn.addEventListener("click", closeMovePicker);
+
 
 /* ============================================================
-   INICIALITZACIÓ
+   LÒGICA MODAL OBJECTES (ITEMS)
    ============================================================ */
+const debounce = (func, delay) => {
+    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => func(...args), delay); };
+};
+
+// 1. Obrir Modal Item
+const openItemPicker = () => {
+    itemModal.style.display = "block";
+    itemSearchInput.value = "";
+    itemsListContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#aaa;">Escriu per cercar objectes...</div>';
+    itemSearchInput.focus();
+};
+
+// 2. Tancar Modal Item
+const closeItemPicker = () => {
+    itemModal.style.display = "none";
+};
+
+// 3. Pintar Llista Items
+const renderItemList = (items) => {
+    itemsListContainer.innerHTML = "";
+
+    // Opció buida
+    const empty = document.createElement("div");
+    empty.className = "move-option"; // Reutilitzem estil
+    empty.style.color = "#ef4444";
+    empty.textContent = "- Treure Objecte -";
+    empty.onclick = () => selectItem("");
+    itemsListContainer.appendChild(empty);
+
+    if (items.length === 0) {
+        itemsListContainer.innerHTML += '<div style="padding:20px; text-align:center;">No s\'han trobat resultats</div>';
+        return;
+    }
+
+    items.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "move-option"; // Reutilitzem estil CSS
+        div.innerHTML = `
+            <span>${item.name}</span>
+            <span style="font-size:10px; color:#aaa; margin-left:10px;">${item.category || ''}</span>
+        `;
+        div.onclick = () => selectItem(item.name);
+        itemsListContainer.appendChild(div);
+    });
+};
+
+// 4. Seleccionar Item
+const selectItem = (itemName) => {
+    itemInput.value = itemName; // Actualitzem l'input principal
+    closeItemPicker();
+};
+
+// 5. Listener cerca Item (amb debounce)
+itemSearchInput.addEventListener("input", debounce(async (e) => {
+    const q = e.target.value.trim();
+    if (q.length < 2) return;
+
+    // Mostrem spinner o loading...
+    itemsListContainer.innerHTML = '<div style="padding:20px; text-align:center;">Cercant...</div>';
+
+    const items = await searchItems(q);
+    renderItemList(items);
+}, 300));
+
+// Connectar Input i Botó Tancar
+itemInput.addEventListener("click", openItemPicker);
+closeItemModalBtn.addEventListener("click", closeItemPicker);
+
+
+/* ============================================================
+   CÀRREGA DE DADES (INICIALITZACIÓ)
+   ============================================================ */
+async function loadDetails() {
+
+    // --- CLEAR INPUTS (Fix: Ensure fields are reset before loading) ---
+    itemInput.value = "";
+    // ------------------------------------------------------------------
+
+    // Habilitats
+    const abs = await fetchAbilities(poke.pokedex_id);
+    abilitySelect.innerHTML = "";
+    abs.forEach(a => {
+        const name = a.ability ? a.ability.name : a.name;
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+        abilitySelect.appendChild(opt);
+    });
+    if (poke.ability) abilitySelect.value = poke.ability;
+
+    // Moviments (Pre-carregats per filtrar en local)
+    const movesData = await fetchMoves(poke.pokedex_id);
+    availableMoves = movesData.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Restaurar Inputs Moviments
+    moveInputs.forEach((inp, idx) => {
+        if (poke.moves && poke.moves[idx]) {
+            const mName = poke.moves[idx];
+            inp.value = mName.charAt(0).toUpperCase() + mName.slice(1);
+            inp.dataset.value = mName;
+        } else {
+            inp.value = "";
+        }
+    });
+
+    // Naturaleses
+    natureSelect.innerHTML = "";
+    NATURES.forEach(n => {
+        const opt = document.createElement("option");
+        opt.value = n; opt.textContent = n;
+        natureSelect.appendChild(opt);
+    });
+    if (poke.nature) natureSelect.value = poke.nature;
+
+    // Restaurar Objecte
+    if (poke.item) itemInput.value = poke.item;
+}
+
+/* ============================================================
+   NAVEGACIÓ I GUARDAR
+   ============================================================ */
+const setupNavCard = (el, idx) => {
+    if (idx >= 0 && idx < 6 && savedTeam[idx]) {
+        el.classList.remove('hidden');
+        el.querySelector('.nav-sprite').src = savedTeam[idx].sprite_url;
+        el.querySelector('.nav-name').textContent = savedTeam[idx].name.toUpperCase();
+        el.onclick = () => { localStorage.setItem("editIndex", idx); window.location.reload(); };
+    } else { el.classList.add('hidden'); }
+};
+setupNavCard(navPrev, editIndex - 1);
+setupNavCard(navNext, editIndex + 1);
+
+saveBtn.addEventListener("click", () => {
+    poke.ability = abilitySelect.value;
+    poke.nature  = natureSelect.value;
+    poke.item    = itemInput.value.trim();
+    poke.moves   = moveInputs.map(i => i.dataset.value || i.value.toLowerCase()).filter(v => v !== "");
+
+    savedTeam[editIndex] = poke;
+    localStorage.setItem("pokeBuilder_team", JSON.stringify(savedTeam));
+    window.location.href = "index.html";
+});
+
+cancelBtn.addEventListener("click", () => window.location.href = "index.html");
+
 loadDetails();
