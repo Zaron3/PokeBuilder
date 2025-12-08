@@ -603,13 +603,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (activeTeam.length < 6) {
             weakEl.textContent = "INCOMPLET";
             weakEl.style.color = "#777"; // Gris
-            weakEl.style.fontSize = "12px"; // Més petit perquè càpiga
             return;
         }
 
         weakEl.textContent = "Calculating...";
         weakEl.style.color = "#aaa";
-        weakEl.style.fontSize = "16px";
 
         try {
             const token = localStorage.getItem("pokeToken");
@@ -1082,7 +1080,7 @@ loginBtn.addEventListener("click", () => {
             if(btn) btn.addEventListener("click", () => { profileModal.style.display = "none"; });
 
         } else {
-            // Pintem la llista
+            // Pintem la llistas
             teams.forEach(t => {
                 const div = document.createElement("div");
                 div.className = "team-list-item";
