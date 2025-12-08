@@ -94,7 +94,7 @@ Obre un **nou terminal** per mantenir aquest procés actiu.
 Navega a la carpeta de la IA:
 
 ```bash
-cd backend/ia
+cd ia
 ```
 Instal·la les dependències:
 
