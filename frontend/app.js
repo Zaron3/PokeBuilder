@@ -324,6 +324,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
         updateTypeButtonText();
 
+        const headers = document.querySelectorAll('.sortable');
+        headers.forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            const small = th.querySelector('small');
+            if(small) small.innerHTML = '⇅';
+        });
+
         // JA NO CAL CARREGAR RES ABANS.
         // Simplement obrim el modal i demanem la primera pàgina.
         searchModal.style.display = "block";
