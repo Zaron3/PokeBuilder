@@ -33,8 +33,22 @@
                 </div>
 
                 <div class="pokemon-identity">
-                    <h1 id="edit-name">POKÉMON</h1>
-                    <span id="edit-id" class="badge">#000</span>
+                    <input type="text"
+                           id="edit-nickname"
+                           class="editable-title"
+                           placeholder="NOM DEL POKÉMON"
+                           spellcheck="false"
+                           autocomplete="off">
+
+                    <div class="identity-meta">
+                        <span id="edit-id" class="badge">#000</span>
+                        <span id="edit-species" class="species-label">NOM ORIGINAL</span>
+                    </div>
+                </div>
+
+                <div class="gender-selector-container">
+                    <div id="gender-circle" class="gender-circle none" title="Canviar gènere">
+                    </div>
                 </div>
 
                 <div class="header-actions">

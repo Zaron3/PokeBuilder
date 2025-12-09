@@ -27,11 +27,13 @@ if (!poke) {
 }
 
 // --- DOM ELEMENTS ---
-const nameEl    = document.getElementById("edit-name");
+const nicknameInput = document.getElementById("edit-nickname");
+const speciesEl     = document.getElementById("edit-species");
 const idEl      = document.getElementById("edit-id");
 const spriteEl  = document.getElementById("edit-sprite");
 const saveBtn   = document.getElementById("save-btn");
 const cancelBtn = document.getElementById("cancel-btn");
+const genderCircle = document.getElementById("gender-circle");
 
 // Inputs Formuari
 const abilitySelect = document.getElementById("edit-ability");
@@ -55,10 +57,17 @@ const closeItemModalBtn = document.getElementById("close-item-modal");
 const navPrev = document.getElementById('nav-prev');
 const navNext = document.getElementById('nav-next');
 
+const GENDER_STATES = [null, 'male', 'female']; // null=gris, male=blau, female=rosa
+let currentGenderIndex = 0; // Per defecte 0 (gris)
+
 /* ============================================================
    RENDERITZAT INICIAL
    ============================================================ */
-nameEl.textContent = poke.name.toUpperCase();
+// Omplim l'input amb el nickname (si en té) o el nom de l'espècie
+nicknameInput.value = poke.nickname || poke.name.toUpperCase();
+
+// Omplim l'etiqueta petita de sota amb el nom real
+speciesEl.textContent = poke.name.toUpperCase();
 idEl.textContent   = "#" + String(poke.pokedex_id).padStart(3, "0");
 spriteEl.src       = poke.sprite_url;
 
@@ -87,6 +96,31 @@ async function searchItems(query) {
     } catch (e) { return []; }
 }
 
+// --- Funció auxiliar per actualitzar el color del cercle ---
+const updateGenderUI = (index) => {
+    // 1. Traiem totes les classes de color antigues
+    genderCircle.classList.remove('none', 'male', 'female');
+
+    // 2. Apliquem lògica segons l'índex
+    if (index === 0) {
+        // ESTAT: GRIS (Sense gènere)
+        genderCircle.classList.add('none');
+        genderCircle.textContent = "";  // Buidem el símbol (o pots posar "-")
+        genderCircle.title = "Sense gènere / Desconegut";
+    }
+    else if (index === 1) {
+        // ESTAT: BLAU (Masculí)
+        genderCircle.classList.add('male');
+        genderCircle.textContent = "♂"; // Símbol Mart
+        genderCircle.title = "Masculí";
+    }
+    else if (index === 2) {
+        // ESTAT: ROSA (Femení)
+        genderCircle.classList.add('female');
+        genderCircle.textContent = "♀"; // Símbol Venus
+        genderCircle.title = "Femení";
+    }
+};
 /* ============================================================
    LÒGICA MODAL MOVIMENTS
    ============================================================ */
@@ -260,6 +294,17 @@ async function loadDetails() {
 
     // Restaurar Objecte
     if (poke.item) itemInput.value = poke.item;
+
+    // Comprovem si ja té gènere guardat
+        if (poke.gender === 'male') {
+            currentGenderIndex = 1;
+        } else if (poke.gender === 'female') {
+            currentGenderIndex = 2;
+        } else {
+            currentGenderIndex = 0; // Si és null o no existeix
+        }
+        // Actualitzem el cercle visualment
+        updateGenderUI(currentGenderIndex);
 }
 
 /* ============================================================
@@ -277,10 +322,15 @@ setupNavCard(navPrev, editIndex - 1);
 setupNavCard(navNext, editIndex + 1);
 
 saveBtn.addEventListener("click", () => {
+    // 1. Guardem el Nickname
+    // Si l'usuari ho deixa buit, fem servir el nom original
+    poke.nickname = nicknameInput.value.trim() || poke.name;
+
     poke.ability = abilitySelect.value;
     poke.nature  = natureSelect.value;
     poke.item    = itemInput.value.trim();
     poke.moves   = moveInputs.map(i => i.dataset.value || i.value.toLowerCase()).filter(v => v !== "");
+    poke.gender = GENDER_STATES[currentGenderIndex];
 
     savedTeam[editIndex] = poke;
     localStorage.setItem("pokeBuilder_team", JSON.stringify(savedTeam));
@@ -288,5 +338,11 @@ saveBtn.addEventListener("click", () => {
 });
 
 cancelBtn.addEventListener("click", () => window.location.href = "index.html");
+
+genderCircle.addEventListener("click", () => {
+    // Màgia matemàtica per ciclar: (0 + 1) % 3 = 1; (1 + 1) % 3 = 2; (2 + 1) % 3 = 0
+    currentGenderIndex = (currentGenderIndex + 1) % 3;
+    updateGenderUI(currentGenderIndex);
+});
 
 loadDetails();

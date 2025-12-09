@@ -2131,3 +2131,137 @@ input:checked + .slider:before {
 .move-option:last-child {
     border-bottom: none;
 }
+/* Posa això al final del teu CSS */
+
+.pokemon-table thead th.sort-asc {
+    background-color: #2980b9 !important; /* BLAU - Petit a Gran */
+    color: white !important;
+    border-bottom: 2px solid #1f618d !important;
+}
+
+.pokemon-table thead th.sort-desc {
+    background-color: #c0392b !important; /* VERMELL - Gran a Petit */
+    color: white !important;
+    border-bottom: 2px solid #922b21 !important;
+}
+/* Contenidor principal */
+.pokemon-identity {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* L'input que sembla un H1 */
+.editable-title {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent; /* Invisible d'inici */
+
+    color: #ffffff;           /* Blanc */
+    font-family: 'Inter', sans-serif;
+    font-size: 48px;          /* Mida gran com tenies el H1 */
+    font-weight: 900;         /* Molt gruixut */
+    text-transform: uppercase;
+
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    outline: none;            /* Treure la vora blava del navegador */
+    transition: all 0.2s ease;
+}
+
+/* Quan passem el ratolí o cliquem */
+.editable-title:hover {
+    border-bottom: 2px solid #4b5563; /* Gris fosc */
+}
+
+.editable-title:focus {
+    border-bottom: 2px solid #3b82f6; /* Blau al escriure */
+}
+
+.editable-title::placeholder {
+    color: #4b5563; /* Gris fosc pel placeholder */
+}
+
+/* Contenidor de sota (ID i Espècie) */
+.identity-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* L'etiqueta del nom real (ex: PIKACHU) */
+.species-label {
+    color: #9ca3af; /* Gris clar */
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    top: 5px;
+    position: relative;
+}
+
+/* La teva classe badge ja existent es veurà bé aquí */
+
+
+/* Contenidor per centrar-lo i donar marge */
+.gender-selector-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Ajusta aquests marges perquè quedi ben centrat entre els elements */
+    margin-left: 30px;
+    margin-right: auto; /* Això empeny els botons de la dreta cap al final */
+}
+
+/* El cercle base */
+.gender-circle {
+    width: 34px;           /* Una mica més gran perquè hi quepiga el símbol */
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+
+    /* --- AFEGIT PER CENTRAR EL SÍMBOL --- */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* --- ESTILS DEL TEXT (SÍMBOL) --- */
+    color: white;          /* Símbol blanc */
+    font-size: 20px;       /* Mida del símbol */
+    font-weight: bold;
+    user-select: none;     /* Evita que es seleccioni el text al fer doble clic */
+}
+
+/* Efecte al passar el ratolí i clicar */
+.gender-circle:hover {
+    transform: scale(1.1); /* Es fa una mica més gran */
+}
+.gender-circle:active {
+    transform: scale(0.95); /* Efecte de "prémer" */
+}
+
+
+/* --- ELS TRES ESTATS DE COLOR --- */
+
+/* Estat 1: Gris (Sense gènere / Desconegut) */
+.gender-circle.none {
+    background-color: #4b5563; /* Gris neutre */
+    border-color: #374151;
+}
+
+/* Estat 2: Blau (Masculí) */
+.gender-circle.male {
+    background-color: #3b82f6; /* Blau intens */
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); /* Brillantor blava */
+}
+
+/* Estat 3: Rosa (Femení) */
+.gender-circle.female {
+    background-color: #ec4899; /* Rosa/Fúcsia */
+    box-shadow: 0 0 10px rgba(236, 72, 153, 0.5); /* Brillantor rosa */
+}

@@ -437,8 +437,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     body.className = "card-body";
     const title = document.createElement("div");
     title.className = "card-title";
+
+    // Decidim quin nom mostrar: Nickname si en té, o Nom real si no.
+    const displayName = poke.nickname || capitalize(poke.name);
+
     title.innerHTML = `
-      <div class="card-name">${capitalize(poke.name)}</div>
+      <div class="card-name">${displayName}</div>
       <div class="card-id">${padId(poke.pokedex_id)}</div>
     `;
 
@@ -1040,6 +1044,7 @@ loginBtn.addEventListener("click", () => {
                         ...baseData,          // Foto, Tipus, Stats base...
 
                         // RESTAUREM ELS CAMPS EDITABLES:
+                        nickname: member.nickname || baseData.name,
                         item: member.item || null,        // Objecte guardat
                         ability: member.ability || null,  // Habilitat guardada
                         nature: member.nature || null,    // Naturalesa guardada
@@ -1376,7 +1381,7 @@ checkLoginStatus();
             description: "Creat amb PokeBuilder Web",
             team_members: activePokemons.map(p => ({
                 base_pokemon: p.name,
-                nickname: p.name, // O p.nickname si en tinguessis
+                nickname: p.nickname || p.name,
 
                 // AQUI ESTÀ LA CLAU: Enviem el que hem editat a edit.js
                 item: p.item || null,
@@ -1636,14 +1641,14 @@ const selectPokemonFromTable = (pokemon) => {
     });
 
     // 2. Stats Inputs
-    Object.keys(filterStatsInputs).forEach(key => {
-        filterStatsInputs[key].addEventListener("input", (e) => {
-            const val = parseInt(e.target.value) || 0;
-            tableState.currentPage = 1;
-            tableState.minStats[key] = val;
-            debouncedRender();
+        Object.keys(filterStatsInputs).forEach(key => {
+            filterStatsInputs[key].addEventListener("input", (e) => {
+                const val = parseInt(e.target.value) || 0;
+                tableState.currentPage = 1;
+                tableState.minStats[key] = val;
+                debouncedRender();
+            });
         });
-    });
 
     // 3. Tipus (Aquí no cal debounce perquè és un clic, volem resposta ràpida)
     const toggleTypeFilter = (type) => {
@@ -1660,25 +1665,59 @@ const selectPokemonFromTable = (pokemon) => {
         renderTable(); // Cridem directe
     };
 
-    // 4. Ordenació
-    sortHeaders.forEach(th => {
-        th.addEventListener("click", () => {
-            const key = th.dataset.key;
-            if (tableState.sortKey === key) {
-                tableState.sortAsc = !tableState.sortAsc;
-            } else {
-                tableState.sortKey = key;
-                // Si ordenem per stats, per defecte descendent (major a menor)
-                const isStat = ['hp','attack','defense','special_attack','special_defense','speed'].includes(key);
-                tableState.sortAsc = !isStat;
-            }
-            // --- AFEGEIX AQUESTA LÍNIA ---
-            tableState.currentPage = 1;
-            // -----------------------------
+    // Funcions auxiliars visuals
+        function actualitzarColorsColumna(totesLesCapcaleres, thActiu, direccio) {
+            totesLesCapcaleres.forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                const smallTag = th.querySelector('small');
+                if(smallTag && th !== thActiu) smallTag.innerHTML = '⇅';
+            });
 
-            renderTable(); // Cridem directe
+            if (direccio === 'asc') {
+                thActiu.classList.add('sort-asc');
+            } else {
+                thActiu.classList.add('sort-desc');
+            }
+        }
+
+        function actualitzarFletxa(th, direccio) {
+            const smallTag = th.querySelector('small');
+            if (smallTag) {
+                smallTag.innerHTML = (direccio === 'asc') ? '▲' : '▼';
+            }
+        }
+
+        // EL BUCLE PRINCIPAL (Aquest gestiona tot: colors i backend)
+        sortHeaders.forEach(th => {
+            th.addEventListener("click", () => {
+                const key = th.dataset.key;
+
+                // 1. Actualitzem l'estat de les dades (pel backend)
+                if (tableState.sortKey === key) {
+                    // Si és la mateixa columna, invertim
+                    tableState.sortAsc = !tableState.sortAsc;
+                } else {
+                    // Si és nova columna
+                    tableState.sortKey = key;
+                    // Per stats solem voler el més alt primer (desc), per text (id/nom) ascendent
+                    const isStat = ['hp','attack','defense','special_attack','special_defense','speed'].includes(key);
+                    tableState.sortAsc = !isStat;
+                }
+
+                tableState.currentPage = 1;
+
+                // 2. Actualitzem l'estat VISUAL (Colors i Fletxes)
+                // Traduïm el boolean sortAsc a string 'asc'/'desc' per les teves funcions visuals
+                const direccioVisual = tableState.sortAsc ? 'asc' : 'desc';
+
+                actualitzarColorsColumna(sortHeaders, th, direccioVisual);
+                actualitzarFletxa(th, direccioVisual);
+
+                // 3. Cridem al backend
+                console.log(`Ordenant per: ${key} -> ${direccioVisual}`);
+                renderTable();
+            });
         });
-    });
 
     // Listener per al Checkbox de "Només Legals"
     const filterBannedInput = document.getElementById("filter-banned");
@@ -1690,5 +1729,6 @@ const selectPokemonFromTable = (pokemon) => {
             renderTable();
         });
     }
+
 
 });
