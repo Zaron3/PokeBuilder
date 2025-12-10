@@ -1583,7 +1583,7 @@ const sortHeaders = document.querySelectorAll(".sortable");
 
                 tr.innerHTML = `
                   <td class="col-img"><img src="${p.sprite_url}" loading="lazy"></td>
-                  <td class="col-id">#${padId(p.pokedex_id)}</td>
+                  <td class="col-id">${padId(p.pokedex_id)}</td>
                   <td class="col-name">${capitalize(p.name)}</td>
                   <td class="col-type">${typesHtml}</td>
                   <td class="col-stat">${s.hp}</td>
@@ -1734,6 +1734,53 @@ const selectPokemonFromTable = (pokemon) => {
             tableState.excludeBanned = e.target.checked;
             tableState.currentPage = 1; // Tornem a la pàgina 1
             renderTable();
+        });
+    }
+
+    // --- LÒGICA DEL BOTÓ RESET (NETEJA TOTAL) ---
+    const resetFiltersBtn = document.getElementById("reset-filters-btn");
+
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener("click", () => {
+            // 1. Buidar Inputs de Text
+            filterIdInput.value = "";
+            filterNameInput.value = "";
+            
+            // 2. Buidar Inputs Numèrics (Stats)
+            Object.values(filterStatsInputs).forEach(input => input.value = "");
+            
+            // 3. Desmarcar Checkbox "Legals"
+            if (filterBannedInput) filterBannedInput.checked = false;
+
+            // 4. Reset de l'Estat Intern (Tornar a l'inici)
+            tableState = {
+                filterId: "",
+                filterName: "",
+                filterTypes: [],
+                minStats: { hp: 0, attack: 0, defense: 0, special_attack: 0, special_defense: 0, speed: 0 },
+                excludeBanned: false,
+                currentPage: 1,
+                limit: 50,
+                sortKey: "id", // IMPORTANT: Tornem a ordenar per ID
+                sortAsc: true
+            };
+
+            // 5. Neteja Visual de l'Ordre (Treure colors vermell/blau)
+            const headers = document.querySelectorAll('.sortable');
+            headers.forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc'); // Adéu colors
+                const small = th.querySelector('small');
+                if(small) small.innerHTML = '⇅'; // Adéu fletxes fixades
+            });
+
+            // 6. Neteja Visual dels Tipus
+            const typeBtns = document.querySelectorAll(".type-option");
+            typeBtns.forEach(btn => btn.classList.remove("active"));
+            updateTypeButtonText();
+
+            // 7. Recarregar taula neta
+            renderTable();
+            showNotification("Filtres i ordre restablerts", "info");
         });
     }
 
