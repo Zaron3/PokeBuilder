@@ -1374,6 +1374,7 @@ option {
 .modal-content.small {
     max-width: 380px;
     text-align: center;
+    padding: 28px 26px 26px;
 }
 
 .auth-header h2 {
@@ -1553,6 +1554,7 @@ option {
     padding: 5px 0;
     outline: none;
     transition: all 0.3s ease;
+    padding: 6px 16px;
 }
 
 .team-name-input:hover,
@@ -2169,6 +2171,7 @@ input:checked + .slider:before {
     margin: 0;
     outline: none;            /* Treure la vora blava del navegador */
     transition: all 0.2s ease;
+    padding: 0 18px;
 }
 
 /* Quan passem el ratolí o cliquem */
@@ -2265,3 +2268,41 @@ input:checked + .slider:before {
     background-color: #ec4899; /* Rosa/Fúcsia */
     box-shadow: 0 0 10px rgba(236, 72, 153, 0.5); /* Brillantor rosa */
 }
+
+#reset-filters-btn {
+    background: linear-gradient(135deg, #dc2626, #b91c1c); 
+    border: 1px solid #7f1d1d;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: 0.2s ease-in-out;
+    font-weight: 600;
+}
+
+#reset-filters-btn:hover {
+    background: linear-gradient(135deg, #ef4444, #dc2626); 
+    border-color: #991b1b;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+/* Centrat vertical per la icona de la imatge */
+.pokemon-table th.col-img svg {
+    display: block;
+    margin: 0 auto;
+}
+
+.pokemon-table .filter-row th {
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px 4px; 
+}
+
+/* --- ARREGLAR ESPAI ENTRE TÍTOLS I INPUTS --- */
+
+/* Treiem la línia de sota dels títols perquè s'enganxin als inputs */
+.pokemon-table thead tr:first-child th {
+    border-bottom: none;
+}
+

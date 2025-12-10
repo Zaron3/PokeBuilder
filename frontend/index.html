@@ -105,8 +105,15 @@
         <h2 style="margin-bottom: 20px; padding-left: 5px;">Cercador de Pokémon</h2>
 
         <div class="table-toolbar">
-            <div class="toolbar-left">
+            <div class="toolbar-left" style="display:flex; align-items:center; gap: 15px;">
                 <span class="toolbar-title">Filtres Avançats</span>
+                
+                <button id="reset-filters-btn" class="ui-btn ghost small" style="padding: 4px 10px; font-size: 11px; height: 28px; display:flex; align-items:center; gap:5px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path>
+                      <line x1="2" y1="3" x2="22" y2="21"></line> </svg>
+                  Netejar
+              </button>
             </div>
 
             <div class="toolbar-right">
@@ -124,7 +131,9 @@
             <table class="pokemon-table">
                 <thead>
                 <tr>
-                    <th class="col-img">Img</th>
+                    <th class="col-img" style="text-align: center; color: #6b7280;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    </th>
                     <th class="sortable" data-key="id">ID <small>⇅</small></th>
                     <th class="sortable" data-key="name">Nom <small>⇅</small></th>
                     <th style="position: relative;">
@@ -162,6 +171,8 @@
                     <th><input type="number" id="filter-spa" placeholder="Min" class="table-input stat-input"></th>
                     <th><input type="number" id="filter-spd" placeholder="Min" class="table-input stat-input"></th>
                     <th><input type="number" id="filter-spe" placeholder="Min" class="table-input stat-input"></th>
+
+                    <th></th>
 
                 </tr>
                 </thead>
